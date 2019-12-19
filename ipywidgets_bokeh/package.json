@@ -1,0 +1,20 @@
+{
+  "name": "ipywidgets_bokeh",
+  "version": "0.1.0",
+  "description": "Allows embedding of Jupyter widgets in Bokeh layouts.",
+  "keywords": [
+    "bokeh",
+    "jupyter",
+    "ipywidgets",
+    "extension"
+  ],
+  "license": "BSD-3-Clause",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bokeh/ipywidgets_bokeh.git"
+  },
+  "devDependencies": {
+    "bokehjs": "../../bokeh2/bokehjs",
+    "@bokeh/jupyter_embed": "../jupyter_embed"
+  }
+}
