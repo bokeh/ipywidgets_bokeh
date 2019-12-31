@@ -35,21 +35,22 @@ class SessionWebsocket(session.Session):
         msg = self.msg(msg_or_type, content=content, parent=parent, header=header, metadata=metadata)
         msg['channel'] = stream.channel
 
-        #from bokeh.io import curdoc
-        #from bokeh.document.events import MessageSentEvent
-        #doc = curdoc()
-        #event = MessageSentEvent(doc, msg)
-        #doc._trigger_on_change(event)
+        from bokeh.io import curdoc
+        from bokeh.document.events import MessageSentEvent
 
-        items = list(self.parent._bk_mapping.items())
-        if len(items) == 0:
-            return
+        doc = curdoc()
+        doc.on_message("ipywidgets_bokeh", self.receive)
 
-        doc = items[0][1].document
-        if doc is not None:
-            from bokeh.document.events import MessageSentEvent
-            event = MessageSentEvent(doc, msg)
-            doc._trigger_on_change(event)
+        event = MessageSentEvent(doc, "ipywidgets_bokeh", msg)
+        doc._trigger_on_change(event)
+
+    def receive(self, data: str) -> None:
+        msg = loads(data)
+        msg_serialized = self.serialize(msg)
+        if msg['channel'] == 'shell':
+            stream = StreamWrapper(msg['channel'])
+            msg_list = [ BytesWrap(k) for k in msg_serialized ]
+            self.parent.dispatch_shell(stream, msg_list)
 
 class BokehKernel(ipykernel.kernelbase.Kernel):
     implementation = 'ipython'
@@ -58,7 +59,6 @@ class BokehKernel(ipykernel.kernelbase.Kernel):
 
     def __init__(self):
         super(BokehKernel, self).__init__()
-        self._bk_mapping = {}
 
         self.session = SessionWebsocket(parent=self, key=SESSION_KEY)
         self.stream = self.iopub_socket = WebsocketStream(self.session)
@@ -73,15 +73,4 @@ class BokehKernel(ipykernel.kernelbase.Kernel):
         for msg_type in comm_msg_types:
             self.shell_handlers[msg_type] = getattr(self.comm_manager, msg_type)
 
-    def _bk_register(self, model, widget):
-        self._bk_mapping[widget] = model
-
 kernel = BokehKernel.instance()
-
-def receive_message(data):
-    msg = loads(data)
-    msg_serialized = kernel.session.serialize(msg)
-    if msg['channel'] == 'shell':
-        stream = StreamWrapper(msg['channel'])
-        msg_list = [ BytesWrap(k) for k in msg_serialized ]
-        kernel.dispatch_shell(stream, msg_list)

@@ -70,11 +70,11 @@ export class IPyWidget extends HTMLBox {
 
       widget_manager.then((manager) => {
         manager.kernel.bk_send = (data: string | ArrayBuffer): void => {
-          const event = new MessageSentEvent(doc, data)
+          const event = new MessageSentEvent(doc, "ipywidgets_bokeh", data)
           doc._trigger_on_change(event)
         }
 
-        doc.on_message((data: unknown) => {
+        doc.on_message("ipywidgets_bokeh", (data: unknown) => {
           manager.kernel.bk_recv({data})
         })
       })

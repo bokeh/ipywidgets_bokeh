@@ -10,6 +10,8 @@ from bokeh.models.layouts import HTMLBox
 
 from ipywidgets import embed, Widget
 
+from .kernel import kernel
+
 class IPyWidget(HTMLBox):
 
     __javascript__ = [
@@ -20,17 +22,9 @@ class IPyWidget(HTMLBox):
 
     bundle = Any()
 
-    def __init__(self, *, widget=None, **kwargs):
+    def __init__(self, *, widget: Widget, **kwargs):
         super().__init__(**kwargs)
-        from .kernel import kernel
-        kernel._bk_register(self, widget)
         spec = widget.get_view_spec()
         state = Widget.get_manager_state(widgets=[])
         state["state"] = embed.dependency_state([widget], drop_defaults=True)
         self.bundle = dict(spec=spec, state=state)
-
-    #def _attach_document(self, doc):
-    #    super()._attach_document(doc)
-
-    #def _detach_document(self):
-    #    super()._detach_document()
