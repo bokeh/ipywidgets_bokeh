@@ -1,4 +1,5 @@
 var path = require("path");
+var version = require('./package.json').version;
 
 var rules = [
   { test: /\.css$/, use: ["style-loader", "css-loader"]},
@@ -17,7 +18,8 @@ module.exports = [{
     filename: "jupyter_embed.js",
     path: path.resolve("./dist"),
     libraryTarget: "amd",
-    publicPath: "/static/js/jupyter_embed/",
+    // publicPath: "/static/js/jupyter_embed/",
+    publicPath: 'https://unpkg.com/@bokeh/jupyter_embed@' + version + '/dist/'
   },
   module: {rules: rules},
   devtool: "source-map",

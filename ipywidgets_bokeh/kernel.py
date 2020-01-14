@@ -54,7 +54,7 @@ class SessionWebsocket(session.Session):
 
 class BokehKernel(ipykernel.kernelbase.Kernel):
     implementation = 'ipython'
-    implementation_version = '0.1.1'
+    implementation_version = '0.1.2'
     banner = 'banner'
 
     def __init__(self):
