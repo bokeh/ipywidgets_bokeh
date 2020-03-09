@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------
-# Copyright (c) 2012 - 2019, Anaconda, Inc., and Bokeh Contributors.
+# Copyright (c) 2012 - 2020, Anaconda, Inc., and Bokeh Contributors.
 # All rights reserved.
 #
 # The full license is in the file LICENSE.txt, distributed with this software.
@@ -54,7 +54,7 @@ class SessionWebsocket(session.Session):
 
 class BokehKernel(ipykernel.kernelbase.Kernel):
     implementation = 'ipython'
-    implementation_version = '0.1.2'
+    implementation_version = '0.1.3'
     banner = 'banner'
 
     def __init__(self):
