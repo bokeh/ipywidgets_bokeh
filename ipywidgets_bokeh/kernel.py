@@ -57,6 +57,8 @@ class BokehKernel(ipykernel.kernelbase.Kernel):
     implementation_version = '0.1.2'
     banner = 'banner'
 
+    _instance = None
+
     def __init__(self):
         super(BokehKernel, self).__init__()
 
