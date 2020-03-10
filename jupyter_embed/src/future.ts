@@ -1,9 +1,9 @@
 // Copyright (c) Jupyter Development Team.
 // Distributed under the terms of the Modified BSD License.
 
-import { PromiseDelegate } from '@phosphor/coreutils';
+import { PromiseDelegate } from '@lumino/coreutils';
 
-import { DisposableDelegate } from '@phosphor/disposable';
+import { DisposableDelegate } from '@lumino/disposable';
 
 import {Kernel, KernelMessage} from "@jupyterlab/services"
 
@@ -321,8 +321,8 @@ namespace Private {
    *
    * #### NOTES
    * We can't just use requestAnimationFrame since it is not available in node.
-   * This implementation is from Phosphor:
-   * https://github.com/phosphorjs/phosphor/blob/e88e4321289bb1198f3098e7bda40736501f2ed8/tests/test-messaging/src/index.spec.ts#L63
+   * This implementation is from lumino:
+   * https://github.com/jupyterlab/lumino/blob/e88e4321289bb1198f3098e7bda40736501f2ed8/tests/test-messaging/src/index.spec.ts#L63
    */
   const defer = (() => {
     let ok = typeof requestAnimationFrame === 'function';

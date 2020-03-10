@@ -1,6 +1,6 @@
 import {HTMLManager} from "@jupyter-widgets/html-manager"
 import {IClassicComm, shims} from "@jupyter-widgets/base"
-import * as pWidget from "@phosphor/widgets"
+import * as pWidget from "@lumino/widgets"
 import * as utils from "@jupyter-widgets/base"
 
 import {DefaultKernel} from "./kernel"

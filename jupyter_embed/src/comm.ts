@@ -1,5 +1,5 @@
-import {JSONObject} from '@phosphor/coreutils'
-import {DisposableDelegate} from '@phosphor/disposable'
+import {JSONObject} from '@lumino/coreutils'
+import {DisposableDelegate} from '@lumino/disposable'
 import {Kernel, KernelMessage} from "@jupyterlab/services"
 
 export class CommHandler extends DisposableDelegate implements Kernel.IComm {
