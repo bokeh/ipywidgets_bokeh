@@ -80,8 +80,21 @@ export class WidgetManager extends HTMLManager {
   constructor(options: any) {
     super(options)
 
-    const settings = ServerConnection.makeSettings()
-    settings.WebSocket = this.make_WebSocket()
+    const settings: ServerConnection.ISettings = {
+      baseUrl: "",
+      appUrl: "",
+      wsUrl: "",
+      token: "",
+      init: {cache: "no-store", credentials: "same-origin"},
+      fetch: async (input: RequestInfo, init?: RequestInit): Promise<Response> => {
+        console.log("FETCH", input, init)
+        return new Response("[]", {status: 200})
+      },
+      Headers,
+      Request,
+      WebSocket: this.make_WebSocket(),
+    };
+
     this.kernel_manager = new KernelManager({serverSettings: settings})
     const kernel_model: Kernel.IModel = {name: "bokeh_kernel", id: `${_kernel_id++}`}
     this.kernel = this.kernel_manager.connectTo({model: kernel_model, handleComms: true})
