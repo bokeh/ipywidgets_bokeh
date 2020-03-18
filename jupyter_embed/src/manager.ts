@@ -2,8 +2,7 @@ import {HTMLManager} from "@jupyter-widgets/html-manager"
 import {IClassicComm, shims} from "@jupyter-widgets/base"
 import * as pWidget from "@lumino/widgets"
 import * as utils from "@jupyter-widgets/base"
-
-import {DefaultKernel} from "./kernel"
+import {Kernel, KernelManager, ServerConnection} from "@jupyterlab/services"
 
 export type WidgetModel = utils.DOMWidgetModel
 
@@ -26,15 +25,67 @@ export type State = {
   state: {[key: string]: ModelState}
 }
 
+let _kernel_id = 0
+
 export class WidgetManager extends HTMLManager {
 
   private _last_state: any
-  kernel: DefaultKernel
+  private kernel_manager: KernelManager
+  private kernel: Kernel.IKernelConnection
+  private ws: WebSocket | null = null
+
+  private bk_send?: (data: string | ArrayBuffer) => void
+
+  bk_open(send_fn: (data: string | ArrayBuffer) => void): void {
+    if (this.ws != null) {
+      console.log("BK_OPEN")
+      this.bk_send = send_fn
+      this.ws.onopen?.({})
+    }
+  }
+
+  bk_recv(data: string | ArrayBuffer): void {
+    if (this.ws != null) {
+      console.log("BK_RECV")
+      const to_send = data instanceof ArrayBuffer ? data : JSON.stringify(data)
+      this.ws.onmessage?.({data: to_send})
+    }
+  }
+
+  make_WebSocket(): typeof WebSocket {
+    const manager = this
+    return class /*implements WebSocket*/ {
+      constructor(readonly url: string, _protocols?: string | string[]) {
+        console.log("MAKE")
+        manager.ws = this
+      }
+
+      close(code?: number, reason?: string): void {
+        console.log("CLOSE")
+        this.onclose?.({})
+      }
+
+      send(data: string | ArrayBufferLike | Blob | ArrayBufferView): void {
+        console.log("SEND")
+        manager.bk_send?.(data)
+      }
+
+      onclose: ((this: WebSocket, ev: CloseEvent) => any) | null = null
+      onerror: ((this: WebSocket, ev: Event) => any) | null = null
+      onmessage: ((this: WebSocket, ev: MessageEvent) => any) | null = null
+      onopen: ((this: WebSocket, ev: Event) => any) | null = null
+    } as any
+  }
 
   constructor(options: any) {
     super(options)
 
-    this.kernel = new DefaultKernel()
+    const settings = ServerConnection.makeSettings()
+    settings.WebSocket = this.make_WebSocket()
+    this.kernel_manager = new KernelManager({serverSettings: settings})
+    const kernel_model: Kernel.IModel = {name: "bokeh_kernel", id: `${_kernel_id++}`}
+    this.kernel = this.kernel_manager.connectTo({model: kernel_model, handleComms: true})
+
     this.kernel.registerCommTarget(this.comm_target_name, (comm, msg) => {
       this.handle_comm_open(new shims.services.Comm(comm), msg)
     })
@@ -56,7 +107,7 @@ export class WidgetManager extends HTMLManager {
 
   async _create_comm(target_name: string, model_id: string, data?: any, metadata?: any,
       buffers?: ArrayBuffer[] | ArrayBufferView[]): Promise<IClassicComm> {
-    const comm = this.kernel.connectToComm(target_name, model_id)
+    const comm = this.kernel.createComm(target_name, model_id)
     if (data || metadata) {
       comm.open(data, metadata, buffers)
     }

@@ -19,5 +19,6 @@
   "scripts": {
     "build": "tsc; webpack"
   },
-  "main": "dist/jupyter_embed.js"
+  "main": "dist/jupyter_embed.js",
+  "types": "dist/lib/index.d.ts"
 }
