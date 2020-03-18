@@ -4,8 +4,8 @@
 
 | File                            | Entry                    | Content  |
 | ------------------------------- | ------------------------ | -------- |
-| `ipywidgets_bokeh/__init__.py`  | `__version__`            | `0.1.3`  |
-| `ipywidgets_bokeh/kernel.py`    | `implementation_version` | `0.1.3`  |
-| `ipywidgets_bokeh/package.json` | `version`                | `0.1.3`  |
-| `jupyter_embed/package.json`    | `version`                | `0.1.3`  |
-| `setup.py`                      | `version`                | `0.1.3`  |
+| `ipywidgets_bokeh/__init__.py`  | `__version__`            | `1.0.0`  |
+| `ipywidgets_bokeh/kernel.py`    | `implementation_version` | `1.0.0`  |
+| `ipywidgets_bokeh/package.json` | `version`                | `1.0.0`  |
+| `jupyter_embed/package.json`    | `version`                | `1.0.0`  |
+| `setup.py`                      | `version`                | `1.0.0`  |

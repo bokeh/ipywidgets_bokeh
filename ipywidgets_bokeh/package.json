@@ -1,6 +1,6 @@
 {
   "name": "ipywidgets_bokeh",
-  "version": "0.1.3",
+  "version": "1.0.0",
   "description": "Allows embedding of Jupyter widgets in Bokeh layouts.",
   "keywords": [
     "bokeh",
