@@ -16,8 +16,6 @@ class IPyWidget(HTMLBox):
 
     __javascript__ = [
         "https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js",
-        #"http://localhost:5006/static/js/jupyter_embed/jupyter_embed.js",
-        "https://unpkg.com/@bokeh/jupyter_embed",
     ]
 
     bundle = Any()

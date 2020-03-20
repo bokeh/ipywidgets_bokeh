@@ -37,14 +37,3 @@ export function require_loader(moduleName: string, moduleVersion: string): Promi
   console.log(`Loading ${moduleName}@${moduleVersion} from ${cdn}`)
   return require_promise([moduleName])
 }
-
-export type WidgetManager = {
-  render(bundle: unknown, el: HTMLElement): Promise<unknown>
-}
-
-//import type {WidgetManager} from "@bokeh/jupyter_embed"
-
-export async function create_widget_manager(): Promise<WidgetManager> {
-  const {WidgetManager} = await require_promise(["@bokeh/jupyter_embed"])
-  return new WidgetManager({loader: require_loader})
-}

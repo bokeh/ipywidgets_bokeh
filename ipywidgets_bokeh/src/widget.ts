@@ -3,9 +3,10 @@ import {Document} from "@bokehjs/document"
 import {MessageSentEvent} from "@bokehjs/document/events"
 import * as p from "@bokehjs/core/properties"
 
-import {create_widget_manager, WidgetManager} from "./ipy_manager"
+import {require_loader} from "./loader"
+import {WidgetManager} from "./manager"
 
-const widget_managers: WeakMap<Document, Promise<WidgetManager>> = new WeakMap()
+const widget_managers: WeakMap<Document, WidgetManager> = new WeakMap()
 
 export class IPyWidgetView extends HTMLBoxView {
   model: IPyWidget
@@ -28,7 +29,7 @@ export class IPyWidgetView extends HTMLBoxView {
   }
 
   async _render(): Promise<void> {
-    const manager = await widget_managers.get(this.model.document!)!
+    const manager = widget_managers.get(this.model.document!)!
     await manager.render(this.model.bundle, this.el)
   }
 }
@@ -50,6 +51,7 @@ export class IPyWidget extends HTMLBox {
     super(attrs)
   }
 
+  static __name__ = "IPyWidget"
   static __module__ = "ipywidgets_bokeh.ipy_widget"
 
   static init_IPyWidget(): void {
@@ -63,21 +65,19 @@ export class IPyWidget extends HTMLBox {
   protected _doc_attached(): void {
     const doc = this.document!
 
-    let widget_manager = widget_managers.get(doc)
-    if (widget_manager == null) {
-      widget_manager = create_widget_manager()
-      widget_managers.set(doc, widget_manager)
+    if (!widget_managers.has(doc)) {
+      const manager = new WidgetManager({loader: require_loader})
+      widget_managers.set(doc, manager)
 
-      widget_manager.then((manager) => {
-        manager.bk_open((data: string | ArrayBuffer): void => {
-          const event = new MessageSentEvent(doc, "ipywidgets_bokeh", data)
-          doc._trigger_on_change(event)
-        })
+      manager.bk_open((data: string | ArrayBuffer): void => {
+        const event = new MessageSentEvent(doc, "ipywidgets_bokeh", data)
+        doc._trigger_on_change(event)
+      })
 
-        doc.on_message("ipywidgets_bokeh", (data: unknown) => {
-          manager.bk_recv(data)
-        })
+      doc.on_message("ipywidgets_bokeh", (data: unknown) => {
+        manager.bk_recv(data)
       })
     }
   }
 }
+IPyWidget.init_IPyWidget()
