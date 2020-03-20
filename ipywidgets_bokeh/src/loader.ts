@@ -39,6 +39,6 @@ export function require_loader(moduleName: string, moduleVersion: string): Promi
     conf.paths[moduleName] = get_cdn_url(moduleName, moduleVersion)
     _requirejs.config(conf)
   }
-  console.log(`Loading ${moduleName}@${moduleVersion} from ${cdn}`)
+  console.debug(`Loading ${moduleName}@${moduleVersion} from ${cdn}`)
   return require_promise([moduleName])
 }

@@ -38,7 +38,6 @@ export class WidgetManager extends HTMLManager {
 
   bk_open(send_fn: (data: string | ArrayBuffer) => void): void {
     if (this.ws != null) {
-      console.log("BK_OPEN")
       this.bk_send = send_fn
       this.ws.onopen?.({})
     }
@@ -46,7 +45,6 @@ export class WidgetManager extends HTMLManager {
 
   bk_recv(data: string | ArrayBuffer): void {
     if (this.ws != null) {
-      console.log("BK_RECV")
       const to_send = data instanceof ArrayBuffer ? data : JSON.stringify(data)
       this.ws.onmessage?.({data: to_send})
     }
@@ -56,17 +54,14 @@ export class WidgetManager extends HTMLManager {
     const manager = this
     return class /*implements WebSocket*/ {
       constructor(readonly url: string, _protocols?: string | string[]) {
-        console.log("MAKE")
         manager.ws = this
       }
 
       close(code?: number, reason?: string): void {
-        console.log("CLOSE")
         this.onclose?.({})
       }
 
       send(data: string | ArrayBufferLike | Blob | ArrayBufferView): void {
-        console.log("SEND")
         manager.bk_send?.(data)
       }
 
@@ -87,7 +82,7 @@ export class WidgetManager extends HTMLManager {
       token: "",
       init: {cache: "no-store", credentials: "same-origin"},
       fetch: async (input: RequestInfo, init?: RequestInit): Promise<Response> => {
-        console.log("FETCH", input, init)
+        // returns an empty list of kernels to make KernelManager happy
         return new Response("[]", {status: 200})
       },
       Headers,
@@ -134,7 +129,6 @@ export class WidgetManager extends HTMLManager {
   display_view(_msg: any, view: any, options: {el: HTMLElement}): Promise<any> {
     return Promise.resolve(view).then(view => {
       pWidget.Widget.attach(view.pWidget, options.el)
-      view.on("remove", () => { console.log("view removed", view) })
       return view
     })
   }
