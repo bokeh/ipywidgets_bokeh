@@ -18,7 +18,8 @@ module.exports = [{
     filename: "ipywidgets_bokeh.js",
     path: path.resolve("./dist"),
     libraryTarget: "global",
-    publicPath: "/static/js/ipywidgets_bokeh/",
+    publicPath: "" // will be filled in dynamically
+    // publicPath: "/static/extensions/ipywidgets_bokeh/",
     // publicPath: 'https://unpkg.com/@bokeh/ipywidgets_bokeh@' + version + '/dist/'
   },
   externals: [

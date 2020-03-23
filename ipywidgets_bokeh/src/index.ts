@@ -1,3 +1,5 @@
+import "./webpack"
+
 //import {output} from "@jupyter-widgets/jupyterlab-manager"
 import * as base from "@jupyter-widgets/base"
 import * as widgets from "@lumino/widgets"
