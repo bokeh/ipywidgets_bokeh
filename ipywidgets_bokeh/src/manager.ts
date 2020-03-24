@@ -106,8 +106,7 @@ export class WidgetManager extends HTMLManager {
 
   bk_recv(data: string | ArrayBuffer): void {
     if (this.ws != null) {
-      const to_send = data instanceof ArrayBuffer ? data : JSON.stringify(data)
-      this.ws.onmessage?.(new MessageEvent("message", {data: to_send}))
+      this.ws.onmessage?.(new MessageEvent("message", {data}))
     }
   }
 

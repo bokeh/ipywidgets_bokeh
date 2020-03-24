@@ -5,8 +5,8 @@
 # The full license is in the file LICENSE.txt, distributed with this software.
 #-----------------------------------------------------------------------------
 
+import json
 import logging
-from json import loads
 
 import ipykernel.kernelbase
 import jupyter_client.session as session
@@ -31,8 +31,11 @@ class StreamWrapper(object):
 
 class SessionWebsocket(session.Session):
 
-    def send(self, stream, msg_or_type, content=None, parent=None, ident=None, buffers=None, track=False, header=None, metadata=None):
-        msg = self.msg(msg_or_type, content=content, parent=parent, header=header, metadata=metadata)
+    def send(self, stream, msg_type, content=None, parent=None, ident=None, buffers=None, track=False, header=None, metadata=None):
+        if buffers is not None and len(buffers) != 0:
+            logging.warn("binary buffers aren't supported yet")
+
+        msg = self.msg(msg_type, content=content, parent=parent, header=header, metadata=metadata)
         msg['channel'] = stream.channel
 
         from bokeh.io import curdoc
@@ -41,11 +44,12 @@ class SessionWebsocket(session.Session):
         doc = curdoc()
         doc.on_message("ipywidgets_bokeh", self.receive)
 
-        event = MessageSentEvent(doc, "ipywidgets_bokeh", msg)
+        data = self.pack(msg).decode("utf-8")
+        event = MessageSentEvent(doc, "ipywidgets_bokeh", data)
         doc._trigger_on_change(event)
 
     def receive(self, data: str) -> None:
-        msg = loads(data)
+        msg = json.loads(data)
         msg_serialized = self.serialize(msg)
         if msg['channel'] == 'shell':
             stream = StreamWrapper(msg['channel'])
