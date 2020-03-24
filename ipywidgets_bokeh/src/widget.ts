@@ -53,7 +53,7 @@ export class IPyWidget extends HTMLBox {
   }
 
   static __name__ = "IPyWidget"
-  static __module__ = "ipywidgets_bokeh.ipy_widget"
+  static __module__ = "ipywidgets_bokeh.widget"
 
   static init_IPyWidget(): void {
     this.prototype.default_view = IPyWidgetView
