@@ -7,6 +7,8 @@
 
 import json
 import logging
+import sys
+from typing import Union
 
 import ipykernel.kernelbase
 import jupyter_client.session as session
@@ -32,9 +34,6 @@ class StreamWrapper(object):
 class SessionWebsocket(session.Session):
 
     def send(self, stream, msg_type, content=None, parent=None, ident=None, buffers=None, track=False, header=None, metadata=None):
-        if buffers is not None and len(buffers) != 0:
-            logging.warn("binary buffers aren't supported yet")
-
         msg = self.msg(msg_type, content=content, parent=parent, header=header, metadata=metadata)
         msg['channel'] = stream.channel
 
@@ -44,7 +43,26 @@ class SessionWebsocket(session.Session):
         doc = curdoc()
         doc.on_message("ipywidgets_bokeh", self.receive)
 
-        data = self.pack(msg).decode("utf-8")
+        packed = self.pack(msg)
+
+        data: Union[bytes, str]
+        if buffers is not None and len(buffers) != 0:
+            buffers = [packed] + buffers
+            nbufs = len(buffers)
+
+            start = 4*(1 + nbufs)
+            offsets = [start]
+
+            for buffer in buffers[:-1]:
+                start += len(buffer)
+                offsets.append(start)
+
+            u32 = lambda n: n.to_bytes(4, "big")
+            items = [u32(nbufs)] + [ u32(offset) for offset in offsets ] + buffers
+            data = b"".join(items)
+        else:
+            data = packed.decode("utf-8")
+
         event = MessageSentEvent(doc, "ipywidgets_bokeh", data)
         doc._trigger_on_change(event)
 
