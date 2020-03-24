@@ -4,6 +4,8 @@ import * as pWidget from "@lumino/widgets"
 import * as utils from "@jupyter-widgets/base"
 import {Kernel, KernelManager, ServerConnection} from "@jupyterlab/services"
 
+import {isString} from "@bokehjs/core/util/types"
+
 export type WidgetModel = utils.DOMWidgetModel
 
 export type Buffer = {
@@ -20,6 +22,11 @@ export type ModelState = {
   buffers: Buffer[]
 }
 
+export type ModelBundle = {
+  spec: {model_id: string}
+  state: State
+}
+
 export type State = {
   version_major?: number
   state: {[key: string]: ModelState}
@@ -34,42 +41,74 @@ export class WidgetManager extends HTMLManager {
   private kernel: Kernel.IKernelConnection
   private ws: WebSocket | null = null
 
-  private bk_send?: (data: string | ArrayBuffer) => void
+  protected bk_send?: (data: string | ArrayBuffer) => void
+
+  make_WebSocket() {
+    const manager = this
+    return class PseudoWebSocket implements WebSocket {
+      binaryType: BinaryType
+
+      readonly bufferedAmount: number
+      readonly extensions: string
+      readonly protocol: string
+      readonly readyState: number
+
+      readonly CLOSED: number = 0
+      readonly CLOSING: number = 1
+      readonly CONNECTING: number = 2
+      readonly OPEN: number = 3
+
+      static readonly CLOSED: number = 0
+      static readonly CLOSING: number = 1
+      static readonly CONNECTING: number = 2
+      static readonly OPEN: number = 3
+
+      constructor(readonly url: string, _protocols?: string | string[]) {
+        manager.ws = this
+      }
+
+      close(code?: number, reason?: string): void {
+        const event = new CloseEvent("close", {code, reason})
+        this.onclose?.(event)
+      }
+
+      send(data: string | ArrayBufferLike | Blob | ArrayBufferView): void {
+        if (isString(data) || data instanceof ArrayBuffer) {
+          manager.bk_send?.(data)
+        } else {
+          console.error(`only string and ArrayBuffer types are supported, got ${typeof data}`)
+        }
+      }
+
+      onclose: ((this: WebSocket, ev: CloseEvent) => unknown) | null = null
+      onerror: ((this: WebSocket, ev: Event) => unknown) | null = null
+      onmessage: ((this: WebSocket, ev: MessageEvent) => unknown) | null = null
+      onopen: ((this: WebSocket, ev: Event) => unknown) | null = null
+
+      addEventListener(_type: string, _listener: EventListenerOrEventListenerObject, _options?: boolean | AddEventListenerOptions): void {
+        throw new Error("not implemented")
+      }
+      removeEventListener(_type: string, _listener: EventListenerOrEventListenerObject, _options?: boolean | EventListenerOptions): void {
+        throw new Error("not implemented")
+      }
+      dispatchEvent(_event: Event): boolean {
+        throw new Error("not implemented")
+      }
+    }
+  }
 
   bk_open(send_fn: (data: string | ArrayBuffer) => void): void {
     if (this.ws != null) {
       this.bk_send = send_fn
-      this.ws.onopen?.({})
+      this.ws.onopen?.(new Event("open"))
     }
   }
 
   bk_recv(data: string | ArrayBuffer): void {
     if (this.ws != null) {
       const to_send = data instanceof ArrayBuffer ? data : JSON.stringify(data)
-      this.ws.onmessage?.({data: to_send})
+      this.ws.onmessage?.(new MessageEvent("message", {data: to_send}))
     }
-  }
-
-  make_WebSocket(): typeof WebSocket {
-    const manager = this
-    return class /*implements WebSocket*/ {
-      constructor(readonly url: string, _protocols?: string | string[]) {
-        manager.ws = this
-      }
-
-      close(code?: number, reason?: string): void {
-        this.onclose?.({})
-      }
-
-      send(data: string | ArrayBufferLike | Blob | ArrayBufferView): void {
-        manager.bk_send?.(data)
-      }
-
-      onclose: ((this: WebSocket, ev: CloseEvent) => any) | null = null
-      onerror: ((this: WebSocket, ev: Event) => any) | null = null
-      onmessage: ((this: WebSocket, ev: MessageEvent) => any) | null = null
-      onopen: ((this: WebSocket, ev: Event) => any) | null = null
-    } as any
   }
 
   constructor(options: any) {
@@ -81,7 +120,7 @@ export class WidgetManager extends HTMLManager {
       wsUrl: "",
       token: "",
       init: {cache: "no-store", credentials: "same-origin"},
-      fetch: async (input: RequestInfo, init?: RequestInit): Promise<Response> => {
+      fetch: async (_input: RequestInfo, _init?: RequestInit): Promise<Response> => {
         // returns an empty list of kernels to make KernelManager happy
         return new Response("[]", {status: 200})
       },
@@ -99,7 +138,7 @@ export class WidgetManager extends HTMLManager {
     })
   }
 
-  async render(bundle: {spec: {model_id: string}, state: State}, el: HTMLElement): Promise<void> {
+  async render(bundle: ModelBundle, el: HTMLElement): Promise<void> {
     const {spec, state} = bundle
     this._last_state = state
     try {

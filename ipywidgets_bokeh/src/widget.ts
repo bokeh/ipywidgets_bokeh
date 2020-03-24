@@ -2,9 +2,10 @@ import {HTMLBox, HTMLBoxView} from "@bokehjs/models/layouts/html_box"
 import {Document} from "@bokehjs/document"
 import {MessageSentEvent} from "@bokehjs/document/events"
 import * as p from "@bokehjs/core/properties"
+import {isString} from "@bokehjs/core/util/types"
 
 import {require_loader} from "./loader"
-import {WidgetManager} from "./manager"
+import {WidgetManager, ModelBundle} from "./manager"
 
 const widget_managers: WeakMap<Document, WidgetManager> = new WeakMap()
 
@@ -38,7 +39,7 @@ export namespace IPyWidget {
   export type Attrs = p.AttrsOf<Props>
 
   export type Props = HTMLBox.Props & {
-    bundle: p.Property<{spec: {model_id: string}, state: object}>
+    bundle: p.Property<ModelBundle>
   }
 }
 
@@ -75,7 +76,11 @@ export class IPyWidget extends HTMLBox {
       })
 
       doc.on_message("ipywidgets_bokeh", (data: unknown) => {
-        manager.bk_recv(data)
+        if (isString(data) || data instanceof ArrayBuffer) {
+          manager.bk_recv(data)
+        } else {
+          console.error(`expected a string or ArrayBuffer, got ${typeof data}`)
+        }
       })
     }
   }
