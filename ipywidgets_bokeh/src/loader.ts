@@ -1,5 +1,10 @@
 declare const requirejs: any
 
+// XXX: we need to rename requirejs, because otherwise webpack would rewrite `requirejs.config()`
+// into `undefined`, for an unspecified and possibly stupid reason. However, we need this exact
+// setup to allow loading thirdparty Jupyter widgets.
+const _requirejs = requirejs
+
 function require_promise(pkg: string | string[]): Promise<any> {
   return new Promise((resolve, reject) => requirejs(pkg, resolve, reject))
 }
@@ -32,18 +37,8 @@ export function require_loader(moduleName: string, moduleVersion: string): Promi
     mods.add(moduleName)
     const conf: {paths: {[key: string]: string}} = {paths: {}}
     conf.paths[moduleName] = get_cdn_url(moduleName, moduleVersion)
-    requirejs.config(conf)
+    _requirejs.config(conf)
   }
-  console.log(`Loading ${moduleName}@${moduleVersion} from ${cdn}`)
+  console.debug(`Loading ${moduleName}@${moduleVersion} from ${cdn}`)
   return require_promise([moduleName])
-}
-
-export type WidgetManager = {
-  render(bundle: unknown, el: HTMLElement): Promise<unknown>
-  kernel: any
-}
-
-export async function create_widget_manager(): Promise<WidgetManager> {
-  const {WidgetManager} = await require_promise(["@bokeh/jupyter_embed"])
-  return new WidgetManager({loader: require_loader})
 }

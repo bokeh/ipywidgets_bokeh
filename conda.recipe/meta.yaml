@@ -21,11 +21,11 @@ requirements:
   build:
     - python
     - setuptools
-    - bokeh >=2.0dev5
+    - bokeh >=2.0.0
     - nodejs >=10.13
   run:
     - python
-    - bokeh >=2.0dev5
+    - bokeh >=2.0.0
     - ipywidgets >=7.5
 
 test:

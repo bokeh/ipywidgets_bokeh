@@ -14,17 +14,26 @@ var rules = [
 module.exports = [{
   entry: ["./dist/lib/index.js"],
   output: {
-    library: "@bokeh/jupyter_embed",
-    filename: "jupyter_embed.js",
+    library: "@bokeh/ipywidgets_bokeh",
+    filename: "ipywidgets_bokeh.js",
     path: path.resolve("./dist"),
-    libraryTarget: "amd",
-    // publicPath: "/static/js/jupyter_embed/",
-    publicPath: 'https://unpkg.com/@bokeh/jupyter_embed@' + version + '/dist/'
+    libraryTarget: "global",
+    publicPath: "" // will be filled in dynamically
+    // publicPath: "/static/extensions/ipywidgets_bokeh/",
+    // publicPath: 'https://unpkg.com/@bokeh/ipywidgets_bokeh@' + version + '/dist/'
   },
-  module: {rules: rules},
-  devtool: "source-map",
+  externals: [
+    function(context, request, callback) {
+      if (/^@bokehjs\//.test(request)){
+        return callback(null, ["Bokeh", "loader", request])
+      }
+      callback();
+    }
+  ],
+  module: {rules},
+  devtool: "none",
   mode: "development",
   optimization: {
-    minimize: true,
+    minimize: false,
   },
 }]

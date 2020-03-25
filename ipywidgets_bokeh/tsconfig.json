@@ -13,7 +13,7 @@
     "noErrorTruncation": true,
     "noEmitOnError": false,
     "declaration": true,
-    "sourceMap": true,
+    "sourceMap": false,
     "importHelpers": false,
     "experimentalDecorators": true,
     "module": "esnext",
