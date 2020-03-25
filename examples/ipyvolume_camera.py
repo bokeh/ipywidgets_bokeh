@@ -21,7 +21,7 @@ source = ColumnDataSource(data=dict(
 ))
 bk_plot.annular_wedge("x", 0, 0, 0.9, 0, dict(field="angles", units="deg"), fill_color="colors", line_color=None, source=source)
 
-x, y, z = np.random.random((3, 10000))
+x, y, z = np.random.random((3, 1000))
 ipv.quickscatter(x, y, z, size=1, marker="sphere")
 ipv_plot = ipv.current.figure
 
@@ -33,7 +33,19 @@ bk_vbox = column([bk_x, bk_y, bk_z])
 ip_x = ipw.FloatSlider(min=0, max=360, value=0, step=1, description="x")
 ip_y = ipw.FloatSlider(min=0, max=360, value=0, step=1, description="y")
 ip_z = ipw.FloatSlider(min=0, max=360, value=0, step=1, description="z")
-ip_vbox = ipw.VBox([ip_x, ip_y, ip_z])
+
+def randomize(button):
+    x, y, z = np.random.random((3, 1000))
+    scatter = ipv_plot.scatters[0]
+    with ipv_plot.hold_sync():
+        scatter.x = x
+        scatter.y = y
+        scatter.z = z
+
+ip_randomize = ipw.Button(description="Randomize")
+ip_randomize.on_click(randomize)
+
+ip_vbox = ipw.VBox([ip_x, ip_y, ip_z, ip_randomize])
 
 def change_anglex(change):
     bk_x.value = round(np.degrees(change["new"]))
