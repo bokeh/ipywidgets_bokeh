@@ -1,14 +1,12 @@
 #!/usr/bin/env python
 
+import os
 import sys
-from os.path import join, dirname
 from setuptools import setup, find_packages, Command
-
-ipywidgets_bokeh_dir = join(dirname(__file__), "ipywidgets_bokeh")
 
 class BuildJS(Command):
 
-    description = "compiles the extension with 'bokeh build'"
+    description = "runs 'npm install && npm run prepack'"
     user_options = []
 
     def initialize_options(self):
@@ -18,8 +16,13 @@ class BuildJS(Command):
         pass
 
     def run(self):
-        from bokeh.ext import build
-        build(ipywidgets_bokeh_dir)
+        npm = "npm" if sys.platform != "win32" else "npm.bat"
+        os.chdir("ipywidgets_bokeh")
+        try:
+            self.spawn([npm, "install"])
+            self.spawn([npm, "run", "prepack"])
+        finally:
+            os.chdir("..")
 
 install_requires = [
     "bokeh >=2.0.0", # TODO >=2.0.1

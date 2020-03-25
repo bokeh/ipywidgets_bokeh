@@ -1,7 +1,7 @@
 {
   "name": "@bokeh/ipywidgets_bokeh",
   "version": "1.0.0-dev.1",
-  "description": "Allows embedding of Jupyter widgets in Bokeh layouts.",
+  "description": "Allows embedding of Jupyter widgets in Bokeh applications.",
   "keywords": [
     "bokeh",
     "jupyter",
@@ -19,6 +19,7 @@
   },
   "devDependencies": {
     "typescript": "~3.8.3",
+    "rimraf": "^3.0.0",
     "css-loader": "^3.0.0",
     "file-loader": "^4.0.0",
     "style-loader": "^0.23.1",
@@ -27,7 +28,14 @@
     "webpack-cli": "^3.3.9"
   },
   "scripts": {
-    "build": "tsc; webpack"
+    "dev": "tsc; webpack",
+    "build": "tsc && webpack --env.production",
+    "clean": "rimraf dist",
+    "prepack": "npm run clean && npm run build"
   },
+  "files": [
+    "dist/lib/**/*.{js,js.map,d.ts}",
+    "dist/*.{js,js.map,d.ts,eot,svg,ttf,woff,woff2}"
+  ],
   "main": "dist/ipywidgets_bokeh.js"
 }
