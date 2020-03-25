@@ -1,6 +1,5 @@
 import {HTMLManager} from "@jupyter-widgets/html-manager"
-import {IClassicComm, shims} from "@jupyter-widgets/base"
-import * as pWidget from "@lumino/widgets"
+import {ModelOptions, IClassicComm, shims} from "@jupyter-widgets/base"
 import * as utils from "@jupyter-widgets/base"
 import {Kernel, KernelManager, ServerConnection} from "@jupyterlab/services"
 
@@ -36,7 +35,7 @@ let _kernel_id = 0
 
 export class WidgetManager extends HTMLManager {
 
-  private _last_state: any
+  private _last_models: {[key: string]: ModelState} | null = null
   private kernel_manager: KernelManager
   private kernel: Kernel.IKernelConnection
   private ws: WebSocket | null = null
@@ -139,7 +138,7 @@ export class WidgetManager extends HTMLManager {
 
   async render(bundle: ModelBundle, el: HTMLElement): Promise<void> {
     const {spec, state} = bundle
-    this._last_state = state
+    this._last_models = state.state
     try {
       const models = await this.set_state(state)
       const model = models.find((item) => item.model_id == spec.model_id)
@@ -147,7 +146,7 @@ export class WidgetManager extends HTMLManager {
         await this.display_model(undefined as any, model, {el})
       }
     } finally {
-      this._last_state = null
+      this._last_models = null
     }
   }
 
@@ -160,71 +159,28 @@ export class WidgetManager extends HTMLManager {
     return new shims.services.Comm(comm)
   }
 
-  _get_comm_info() {
-    return Promise.resolve(this._last_state.state)
+  _get_comm_info(): Promise<any> {
+    if (this._last_models != null)
+      return Promise.resolve(this._last_models)
+    else
+      throw new Error("internal error in _get_comm_info()")
   }
 
-  display_view(_msg: any, view: any, options: {el: HTMLElement}): Promise<any> {
-    return Promise.resolve(view).then(view => {
-      pWidget.Widget.attach(view.pWidget, options.el)
-      return view
-    })
-  }
-
-  loadClass(className: string, moduleName: string, moduleVersion: string): any {
-    return super.loadClass(className, moduleName, moduleVersion)
-  }
-
-  set_state(state: State): Promise<WidgetModel[]> {
-    this._last_state = state
-    // Check to make sure that it"s the same version we are parsing.
-    if (!(state.version_major && state.version_major <= 2)) {
-      throw new Error("Unsupported widget state format")
-    }
-    const models = state.state
-    // Recreate all the widget models for the given widget manager state.
-    const all_models = this._get_comm_info().then((live_comms) => {
-      return Promise.all(Object.keys(models).map((model_id) => {
-        // First put back the binary buffers
-        const decode = {base64: utils.base64ToBuffer, hex: utils.hexToBuffer}
+  async new_model(options: ModelOptions, serialized_state?: any): Promise<WidgetModel> {
+    // XXX: this is a hack that allows to connect to a live comm and use initial
+    // state sent via a state bundle, essentially turning new_model(modelCreate)
+    // into new_model(modelCreate, modelState) in ManagerBase.set_state(), possibly
+    // breaking safe guard rule (1) of that method. This is done this way to avoid
+    // reimplementing set_state().
+    if (serialized_state === undefined) {
+      const models = this._last_models
+      const {model_id} = options
+      if (model_id != null && models?.[model_id] != null) {
         const model = models[model_id]
-        const model_state = model.state
-        if (model.buffers) {
-          const buffer_paths = model.buffers.map((b) => b.path)
-          // put_buffers expects buffers to be DataViews
-          const buffers = model.buffers.map((b) => new DataView(decode[b.encoding](b.data)))
-          utils.put_buffers(model.state, buffer_paths, buffers)
-        }
-        // If the model has already been created, set its state and then
-        // return it.
-        const promise = this.get_model(model_id)
-        if (promise != null) {
-          return promise.then((model) => {
-            // deserialize state
-            return (model.constructor as any)._deserialize_state(model_state || {}, this).then((attributes: any) => {
-              model.set_state(attributes)
-              return model
-            })
-          })
-        }
-        const model_create = {
-          model_id: model_id,
-          model_name: model.model_name,
-          model_module: model.model_module,
-          model_module_version: model.model_module_version
-        }
-        if (live_comms.hasOwnProperty(model_id)) {
-          // This connects to an existing comm if it exists, and
-          // should *not* send a comm open message.
-          return this._create_comm(this.comm_target_name, model_id).then((comm) => {
-            return this.new_model({...model_create, comm}, model_state)
-          })
-        }
-        else {
-          return this.new_model(model_create, model_state)
-        }
-      }))
-    })
-    return all_models
+        serialized_state = model.state
+      } else
+        throw new Error("internal error in new_model()")
+    }
+    return super.new_model(options, serialized_state)
   }
 }
