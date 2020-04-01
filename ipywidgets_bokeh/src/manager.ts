@@ -35,7 +35,7 @@ let _kernel_id = 0
 
 export class WidgetManager extends HTMLManager {
 
-  private _last_models: {[key: string]: ModelState} | null = null
+  private _known_models: {[key: string]: ModelState} = {}
   private kernel_manager: KernelManager
   private kernel: Kernel.IKernelConnection
   private ws: WebSocket | null = null
@@ -138,7 +138,10 @@ export class WidgetManager extends HTMLManager {
 
   async render(bundle: ModelBundle, el: HTMLElement): Promise<void> {
     const {spec, state} = bundle
-    this._last_models = state.state
+    const new_models = state.state
+    for (const id in new_models) {
+      this._known_models[id] = new_models[id]
+    }
     try {
       const models = await this.set_state(state)
       const model = models.find((item) => item.model_id == spec.model_id)
@@ -146,7 +149,9 @@ export class WidgetManager extends HTMLManager {
         await this.display_model(undefined as any, model, {el})
       }
     } finally {
-      this._last_models = null
+      for (const id in new_models) {
+        delete this._known_models[id]
+      }
     }
   }
 
@@ -160,10 +165,7 @@ export class WidgetManager extends HTMLManager {
   }
 
   _get_comm_info(): Promise<any> {
-    if (this._last_models != null)
-      return Promise.resolve(this._last_models)
-    else
-      throw new Error("internal error in _get_comm_info()")
+    return Promise.resolve(this._known_models)
   }
 
   async new_model(options: ModelOptions, serialized_state?: any): Promise<WidgetModel> {
@@ -173,9 +175,9 @@ export class WidgetManager extends HTMLManager {
     // breaking safe guard rule (1) of that method. This is done this way to avoid
     // reimplementing set_state().
     if (serialized_state === undefined) {
-      const models = this._last_models
+      const models = this._known_models
       const {model_id} = options
-      if (model_id != null && models?.[model_id] != null) {
+      if (model_id != null && models[model_id] != null) {
         const model = models[model_id]
         serialized_state = model.state
       } else
