@@ -33,6 +33,11 @@ class StreamWrapper(object):
 
 class SessionWebsocket(session.Session):
 
+    def __init__(self, *args, **kwargs):
+        self._document = kwargs.pop('document', None)
+        self._send_callback = kwargs.pop('send_callback', None)
+        super(SessionWebsocket, self).__init__(*args, **kwargs)
+
     def send(self, stream, msg_type, content=None, parent=None, ident=None, buffers=None, track=False, header=None, metadata=None):
         msg = self.msg(msg_type, content=content, parent=parent, header=header, metadata=metadata)
         msg['channel'] = stream.channel
@@ -40,7 +45,7 @@ class SessionWebsocket(session.Session):
         from bokeh.io import curdoc
         from bokeh.document.events import MessageSentEvent
 
-        doc = curdoc()
+        doc = self._document or curdoc()
         doc.on_message("ipywidgets_bokeh", self.receive)
 
         packed = self.pack(msg)
@@ -65,6 +70,8 @@ class SessionWebsocket(session.Session):
 
         event = MessageSentEvent(doc, "ipywidgets_bokeh", data)
         doc._trigger_on_change(event)
+        if self._send_callback:
+            self._send_callback()
 
     def receive(self, data: str) -> None:
         msg = json.loads(data)
@@ -74,15 +81,18 @@ class SessionWebsocket(session.Session):
             msg_list = [ BytesWrap(k) for k in msg_serialized ]
             self.parent.dispatch_shell(stream, msg_list)
 
+
 class BokehKernel(ipykernel.kernelbase.Kernel):
     implementation = 'ipython'
     implementation_version = '1.0.0'
     banner = 'banner'
 
-    def __init__(self):
+    def __init__(self, key=None, document=None, send_callback=None):
         super(BokehKernel, self).__init__()
 
-        self.session = SessionWebsocket(parent=self, key=SESSION_KEY)
+        self.session = SessionWebsocket(
+            document=document, parent=self, key=key or SESSION_KEY,
+            send_callback=send_callback)
         self.stream = self.iopub_socket = WebsocketStream(self.session)
 
         self.iopub_socket.channel = 'iopub'
@@ -95,4 +105,16 @@ class BokehKernel(ipykernel.kernelbase.Kernel):
         for msg_type in comm_msg_types:
             self.shell_handlers[msg_type] = getattr(self.comm_manager, msg_type)
 
-kernel = BokehKernel.instance()
+    @classmethod
+    def instance(cls, *args, **kwargs):
+        if cls._instance is None:
+            return super(BokehKernel, cls).instance(*args, **kwargs)
+        return cls(*args, **kwargs)
+
+
+# Do not make kernel instance if an existing kernel is present
+# i.e. when we are in an existing Jupyter session
+if ipykernel.kernelbase.Kernel._instance is None:
+    kernel = BokehKernel.instance()
+else:
+    kernel = None

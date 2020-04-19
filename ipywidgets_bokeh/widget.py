@@ -22,6 +22,7 @@ class IPyWidget(HTMLBox):
 
     def __init__(self, *, widget: Widget, **kwargs):
         super().__init__(**kwargs)
+        self._widget = widget
         spec = widget.get_view_spec()
         state = Widget.get_manager_state(widgets=[])
         state["state"] = embed.dependency_state([widget], drop_defaults=True)
