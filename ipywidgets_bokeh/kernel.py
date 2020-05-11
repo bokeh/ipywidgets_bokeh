@@ -8,10 +8,12 @@
 import json
 import logging
 import sys
+
 from typing import Union
 
 import ipykernel.kernelbase
 import jupyter_client.session as session
+
 from ipykernel.comm import CommManager
 
 SESSION_KEY = b'ipywidgets_bokeh'
@@ -74,6 +76,7 @@ class SessionWebsocket(session.Session):
             msg_list = [ BytesWrap(k) for k in msg_serialized ]
             self.parent.dispatch_shell(stream, msg_list)
 
+
 class BokehKernel(ipykernel.kernelbase.Kernel):
     implementation = 'ipython'
     implementation_version = '1.0.0'
@@ -95,4 +98,10 @@ class BokehKernel(ipykernel.kernelbase.Kernel):
         for msg_type in comm_msg_types:
             self.shell_handlers[msg_type] = getattr(self.comm_manager, msg_type)
 
-kernel = BokehKernel.instance()
+
+# Do not make kernel instance if an existing kernel is present
+# i.e. when we are in an existing Jupyter session
+if ipykernel.kernelbase.Kernel._instance is None:
+    kernel = BokehKernel.instance()
+else:
+    kernel = None
