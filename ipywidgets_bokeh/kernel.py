@@ -39,10 +39,9 @@ class SessionWebsocket(session.Session):
         msg = self.msg(msg_type, content=content, parent=parent, header=header, metadata=metadata)
         msg['channel'] = stream.channel
 
-        from bokeh.io import curdoc
         from bokeh.document.events import MessageSentEvent
 
-        doc = curdoc()
+        doc = self.document
         doc.on_message("ipywidgets_bokeh", self.receive)
 
         packed = self.pack(msg)
@@ -64,9 +63,8 @@ class SessionWebsocket(session.Session):
             data = b"".join(items)
         else:
             data = packed.decode("utf-8")
-
         event = MessageSentEvent(doc, "ipywidgets_bokeh", data)
-        doc._trigger_on_change(event)
+        self._trigger_change(event)
 
     def receive(self, data: str) -> None:
         msg = json.loads(data)
@@ -75,6 +73,14 @@ class SessionWebsocket(session.Session):
             stream = StreamWrapper(msg['channel'])
             msg_list = [ BytesWrap(k) for k in msg_serialized ]
             self.parent.dispatch_shell(stream, msg_list)
+
+    @property
+    def document(self):
+        from bokeh.io import curdoc
+        return curdoc()
+
+    def _trigger_change(self, event):
+        self.document._trigger_on_change(event)
 
 
 class BokehKernel(ipykernel.kernelbase.Kernel):
