@@ -53,6 +53,8 @@ class SessionWebsocket(session.Session):
         # Ensure document message handler is only added once
         try:
             doc.remove_on_message("ipywidgets_bokeh", self.receive)
+        except Exception:
+            pass
         finally:
             doc.on_message("ipywidgets_bokeh", self.receive)
 
