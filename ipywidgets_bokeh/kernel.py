@@ -1,11 +1,10 @@
 #-----------------------------------------------------------------------------
-# Copyright (c) 2012 - 2020, Anaconda, Inc., and Bokeh Contributors.
+# Copyright (c) 2012 - 2021, Anaconda, Inc., and Bokeh Contributors.
 # All rights reserved.
 #
 # The full license is in the file LICENSE.txt, distributed with this software.
 #-----------------------------------------------------------------------------
 
-import asyncio
 import json
 import logging
 import sys
@@ -87,7 +86,11 @@ class SessionWebsocket(session.Session):
             stream = StreamWrapper(msg['channel'])
             msg_list = [BytesWrap(k) for k in msg_serialized]
             if kernel_version > '6':
-                self.document.add_next_tick_callback(partial(self.parent.dispatch_shell, msg_list))
+                cb = partial(self.parent.dispatch_shell, msg_list)
+                if self.document.session_context: # Bokeh Server
+                    self.document.add_next_tick_callback(cb)
+                else: # Other Tornado based server
+                    self.parent.io_loop.add_callback(cb)
             else:
                 self.parent.dispatch_shell(stream, msg_list)
 
