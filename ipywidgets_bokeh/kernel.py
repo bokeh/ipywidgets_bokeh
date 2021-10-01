@@ -92,7 +92,7 @@ class SessionWebsocket(session.Session):
         if self._document:
             return self._document
         from bokeh.io import curdoc
-        doc = curdoc()
+        self._document = doc = curdoc()
         doc.on_message("ipywidgets_bokeh", self.receive)
         return doc
 
