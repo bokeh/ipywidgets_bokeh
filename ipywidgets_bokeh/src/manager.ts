@@ -127,7 +127,7 @@ export class WidgetManager extends HTMLManager {
       WebSocket: this.make_WebSocket(),
     };
 
-    this._comms = {}
+    this._comms = new Map()
     this.kernel_manager = new KernelManager({serverSettings: settings})
     const kernel_model: Kernel.IModel = {name: "bokeh_kernel", id: `${_kernel_id++}`}
     this.kernel = this.kernel_manager.connectTo({model: kernel_model, handleComms: true})
@@ -159,11 +159,12 @@ export class WidgetManager extends HTMLManager {
   async _create_comm(target_name: string, model_id: string, data?: any, metadata?: any,
 		     buffers?: ArrayBuffer[] | ArrayBufferView[]): Promise<IClassicComm> {
     let comm;
-    if (model_id in this._comms) {
-      comm = this._comms[model_id]
+    const key = target_name+model_id
+    if (this._comms.has(key)) {
+      comm = this._comms.get(key)
     } else {
       comm = this.kernel.createComm(target_name, model_id)
-      this._comms[model_id] = comm
+      this._comms.set(key, comm)
     }
     if (data || metadata) {
       comm.open(data, metadata, buffers)
