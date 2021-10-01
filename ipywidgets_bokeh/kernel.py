@@ -44,15 +44,17 @@ class StreamWrapper(object):
 
 class SessionWebsocket(session.Session):
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._document = None
-
     def send(self, stream, msg_type, content=None, parent=None, ident=None, buffers=None, track=False, header=None, metadata=None):
         msg = self.msg(msg_type, content=content, parent=parent, header=header, metadata=metadata)
         msg['channel'] = stream.channel
 
         doc = self.document
+
+        # Ensure document message handler is only added once
+        try:
+            doc.remove_on_message("ipywidgets_bokeh", self.receive)
+        finally:
+            doc.on_message("ipywidgets_bokeh", self.receive)
 
         packed = self.pack(msg)
 
@@ -89,12 +91,8 @@ class SessionWebsocket(session.Session):
 
     @property
     def document(self):
-        if self._document:
-            return self._document
         from bokeh.io import curdoc
-        self._document = doc = curdoc()
-        doc.on_message("ipywidgets_bokeh", self.receive)
-        return doc
+        return curdoc()
 
     def _trigger_change(self, event):
         self.document.callbacks.trigger_on_change(event)
