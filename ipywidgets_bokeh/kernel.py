@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------
-# Copyright (c) 2012 - 2020, Anaconda, Inc., and Bokeh Contributors.
+# Copyright (c) 2012 - 2021, Anaconda, Inc., and Bokeh Contributors.
 # All rights reserved.
 #
 # The full license is in the file LICENSE.txt, distributed with this software.
@@ -9,12 +9,20 @@ import json
 import logging
 import sys
 
+from distutils.version import LooseVersion
+from functools import partial
 from typing import Union
 
+import ipykernel
 import ipykernel.kernelbase
 import jupyter_client.session as session
 
+from bokeh.document.events import MessageSentEvent
 from ipykernel.comm import CommManager
+from tornado.ioloop import IOLoop
+from traitlets import Any
+
+kernel_version = LooseVersion(ipykernel.__version__)
 
 SESSION_KEY = b'ipywidgets_bokeh'
 
@@ -39,10 +47,15 @@ class SessionWebsocket(session.Session):
         msg = self.msg(msg_type, content=content, parent=parent, header=header, metadata=metadata)
         msg['channel'] = stream.channel
 
-        from bokeh.document.events import MessageSentEvent
-
         doc = self.document
-        doc.on_message("ipywidgets_bokeh", self.receive)
+
+        # Ensure document message handler is only added once
+        try:
+            doc.remove_on_message("ipywidgets_bokeh", self.receive)
+        except Exception:
+            pass
+        finally:
+            doc.on_message("ipywidgets_bokeh", self.receive)
 
         packed = self.pack(msg)
 
@@ -71,8 +84,15 @@ class SessionWebsocket(session.Session):
         msg_serialized = self.serialize(msg)
         if msg['channel'] == 'shell':
             stream = StreamWrapper(msg['channel'])
-            msg_list = [ BytesWrap(k) for k in msg_serialized ]
-            self.parent.dispatch_shell(stream, msg_list)
+            msg_list = [BytesWrap(k) for k in msg_serialized]
+            if kernel_version > '6':
+                cb = partial(self.parent.dispatch_shell, msg_list)
+                if self.document.session_context: # Bokeh Server
+                    self.document.add_next_tick_callback(cb)
+                else: # Other Tornado based server
+                    self.parent.io_loop.add_callback(cb)
+            else:
+                self.parent.dispatch_shell(stream, msg_list)
 
     @property
     def document(self):
@@ -80,7 +100,13 @@ class SessionWebsocket(session.Session):
         return curdoc()
 
     def _trigger_change(self, event):
-        self.document._trigger_on_change(event)
+        self.document.callbacks.trigger_on_change(event)
+
+
+class ShellStream:
+
+    def flush(self, *args):
+        pass
 
 
 class BokehKernel(ipykernel.kernelbase.Kernel):
@@ -88,11 +114,14 @@ class BokehKernel(ipykernel.kernelbase.Kernel):
     implementation_version = '1.0.2'
     banner = 'banner'
 
+    shell_stream = Any(ShellStream(), allow_none=True)
+
     def __init__(self):
         super(BokehKernel, self).__init__()
 
         self.session = SessionWebsocket(parent=self, key=SESSION_KEY)
         self.stream = self.iopub_socket = WebsocketStream(self.session)
+        self.io_loop = IOLoop.current()
 
         self.iopub_socket.channel = 'iopub'
         self.session.stream = self.iopub_socket
@@ -104,6 +133,8 @@ class BokehKernel(ipykernel.kernelbase.Kernel):
         for msg_type in comm_msg_types:
             self.shell_handlers[msg_type] = getattr(self.comm_manager, msg_type)
 
+    async def _flush_control_queue(self):
+        pass
 
 # Do not make kernel instance if an existing kernel is present
 # i.e. when we are in an existing Jupyter session

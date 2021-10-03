@@ -25,7 +25,7 @@ class BuildJS(Command):
             os.chdir("..")
 
 install_requires = [
-    "bokeh >=2.0.1",
+    "bokeh >=2.4.0,<2.5",
     "ipywidgets >=7.5.0",
 ]
 
@@ -33,7 +33,7 @@ setup_args = dict(
     name="ipywidgets_bokeh",
     version="1.0.2",
     install_requires=install_requires,
-    python_requires=">=3.6",
+    python_requires=">=3.7",
     description="Allows embedding of Jupyter widgets in Bokeh layouts.",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
