@@ -9,18 +9,15 @@
 set -e
 set -x
 
-if [[ $(jq '.version' package.json) =~ "dev" ]];
-then
-    echo "dev build"
-    exit 1
-fi
-
 git clean -dfx
+cd ipywidgets_bokeh/
+npm install
 npm publish --access public
+cd ..
 
 git clean -dfx
 python setup.py build_js sdist
-twine upload
+twine upload -u __tokeh__ -p $PYPI_TOKEN_IPYWIDGETS_BOKEH dist/ipywidgets_bokeh-x.y.z.tar.gz
 
 git clean -dfx
 conda build conda.recipe
