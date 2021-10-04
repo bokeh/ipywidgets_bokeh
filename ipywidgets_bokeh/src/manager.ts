@@ -127,6 +127,7 @@ export class WidgetManager extends HTMLManager {
       Headers,
       Request,
       WebSocket: this.make_WebSocket(),
+      appendToken: false,
     };
 
     this.kernel_manager = new KernelManager({serverSettings: settings})
