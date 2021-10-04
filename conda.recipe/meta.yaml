@@ -21,7 +21,7 @@ requirements:
   build:
     - python
     - setuptools
-    - nodejs >=10.13
+    - nodejs 14.*
   run:
     - python
     - bokeh >=2.0.0 # TODO >=2.0.1
