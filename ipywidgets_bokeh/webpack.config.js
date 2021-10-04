@@ -11,9 +11,9 @@ const rules = [
   { test: /\.svg(\?v=\d+\.\d+\.\d+)?$/, use: "url-loader?limit=10000&mimetype=image/svg+xml" }
 ]
 
-module.exports = (env = {}) => {
-  const mode = env.production ? "production" : "development"
-  const minimize = env.production
+module.exports = (env={}, argv={}) => {
+  const mode = argv.mode ?? "production"
+  const minimize = mode == "production"
   return {
     entry: ["./dist/lib/index.js"],
     output: {
@@ -26,7 +26,7 @@ module.exports = (env = {}) => {
       // publicPath: 'https://unpkg.com/@bokeh/ipywidgets_bokeh@' + version + '/dist/'
     },
     externals: [
-      function(context, request, callback) {
+      function({context, request}, callback) {
         if (/^@bokehjs\//.test(request)){
           return callback(null, ["Bokeh", "loader", request])
         }
@@ -34,7 +34,7 @@ module.exports = (env = {}) => {
       }
     ],
     module: {rules},
-    devtool: "none",
+    devtool: false,
     mode,
     optimization: {minimize},
   }

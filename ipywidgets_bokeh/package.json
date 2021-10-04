@@ -29,7 +29,7 @@
   },
   "scripts": {
     "dev": "tsc; webpack",
-    "build": "tsc && webpack --env.production",
+    "build": "tsc && webpack --mode=production",
     "clean": "rimraf dist",
     "prepack": "npm run clean && npm run build"
   },
