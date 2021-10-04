@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "@bokeh/bokehjs": "~2.4.0",
-    "@jupyter-widgets/html-manager": "~0.19.0"
+    "@jupyter-widgets/html-manager": "~0.20.0"
   },
   "devDependencies": {
     "css-loader": "^6.3.0",
