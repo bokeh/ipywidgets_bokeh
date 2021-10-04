@@ -31,7 +31,7 @@ install_requires = [
 
 setup_args = dict(
     name="ipywidgets_bokeh",
-    version="1.1.0",
+    version="1.2.0",
     install_requires=install_requires,
     python_requires=">=3.7",
     description="Allows embedding of Jupyter widgets in Bokeh layouts.",
