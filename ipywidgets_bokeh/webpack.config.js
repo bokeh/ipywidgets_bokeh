@@ -13,7 +13,7 @@ const rules = [
 
 module.exports = (env={}, argv={}) => {
   const mode = argv.mode ?? "production"
-  const minimize = mode == "production"
+  const minimize = mode === "production"
   return {
     entry: ["./dist/lib/index.js"],
     output: {

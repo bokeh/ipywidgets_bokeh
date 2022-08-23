@@ -4,7 +4,7 @@ import {MessageSentEvent} from "@bokehjs/document/events"
 import * as p from "@bokehjs/core/properties"
 import {isString} from "@bokehjs/core/util/types"
 
-import {require_loader} from "./loader"
+import {generate_require_loader} from "./loader"
 import {WidgetManager, ModelBundle} from "./manager"
 
 const widget_managers: WeakMap<Document, WidgetManager> = new WeakMap()
@@ -40,6 +40,7 @@ export namespace IPyWidget {
 
   export type Props = HTMLBox.Props & {
     bundle: p.Property<ModelBundle>
+    cdn: p.Property<string>
   }
 }
 
@@ -50,6 +51,7 @@ export class IPyWidget extends HTMLBox {
 
   constructor(attrs?: Partial<IPyWidget.Attrs>) {
     super(attrs)
+    console.log({cdn: this.properties.cdn.get_value()})
   }
 
   static __name__ = "IPyWidget"
@@ -60,6 +62,7 @@ export class IPyWidget extends HTMLBox {
 
     this.define<IPyWidget.Props>({
       bundle: [ p.Any ],
+      cdn: [ p.String ],
     })
   }
 
@@ -67,7 +70,9 @@ export class IPyWidget extends HTMLBox {
     const doc = this.document!
 
     if (!widget_managers.has(doc)) {
-      const manager = new WidgetManager({loader: require_loader})
+      const manager = new WidgetManager({
+        loader: generate_require_loader(this.properties.cdn.get_value())
+      })
       widget_managers.set(doc, manager)
 
       manager.bk_open((data: string | ArrayBuffer): void => {
