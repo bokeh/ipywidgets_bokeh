@@ -139,7 +139,7 @@ export class WidgetManager extends HTMLManager {
     })
   }
 
-  async render(bundle: ModelBundle, el: HTMLElement): Promise<void> {
+  async render(bundle: ModelBundle, el: HTMLElement, onDisplay: () => void): Promise<void> {
     const {spec, state} = bundle
     const new_models = state.state
     for (const id in new_models) {
@@ -149,7 +149,9 @@ export class WidgetManager extends HTMLManager {
       const models = await this.set_state(state)
       const model = models.find((item) => item.model_id == spec.model_id)
       if (model != null) {
-        await this.display_model(undefined as any, model, {el})
+        const view = await this.create_view(model, {el})
+        view.on('displayed', onDisplay)
+        await this.display_view(undefined as any, view, {el})
       }
     } finally {
       for (const id in new_models) {

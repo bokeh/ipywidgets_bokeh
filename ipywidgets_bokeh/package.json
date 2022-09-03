@@ -28,7 +28,7 @@
     "webpack-cli": "^4.8.0"
   },
   "scripts": {
-    "dev": "tsc; webpack",
+    "dev": "tsc; webpack --mode=development",
     "build": "tsc && webpack --mode=production",
     "clean": "rimraf dist",
     "prepack": "npm run clean && npm run build"

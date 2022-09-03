@@ -31,7 +31,13 @@ export class IPyWidgetView extends HTMLBoxView {
 
   async _render(): Promise<void> {
     const manager = widget_managers.get(this.model.document!)!
-    await manager.render(this.model.bundle, this.el)
+    await manager.render(
+      this.model.bundle,
+      this.el,
+      () => {
+        this.invalidate_layout()
+      }
+    )
   }
 }
 
