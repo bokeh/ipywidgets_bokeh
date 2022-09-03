@@ -86,7 +86,7 @@ export class IPyWidgetView extends LayoutDOMView {
       const manager = widget_managers.get(document)
       assert(manager != null, "manager is null")
 
-      this.ipy_view = await manager.render(this.model.bundle, this.container)
+      this.ipy_view = await manager.render(this.model.bundle, this.container, () => this.invalidate_layout())
     } else {
       this.container.append(this.ipy_view.el)
     }

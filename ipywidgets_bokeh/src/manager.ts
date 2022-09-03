@@ -162,7 +162,7 @@ export class WidgetManager extends HTMLManager {
     model.comm_live = true
   }
 
-  async render(bundle: ModelBundle, el: HTMLElement): Promise<WidgetView | null> {
+  async render(bundle: ModelBundle, el: HTMLElement, onDisplay: () => void): Promise<WidgetView | null> {
     const {spec, state} = bundle
     const new_models = state.state
     for (const [id, new_model] of entries(new_models)) {
@@ -190,6 +190,7 @@ export class WidgetManager extends HTMLManager {
       }
 
       const view = await this.create_view(model, {el})
+      view.on('displayed', onDisplay)
       await this.display_view(view, el)
       return view
     } finally {
