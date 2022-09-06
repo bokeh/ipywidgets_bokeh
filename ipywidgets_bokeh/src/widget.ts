@@ -5,9 +5,12 @@ import {Document} from "@bokehjs/document"
 import {MessageSentEvent} from "@bokehjs/document/events"
 import * as p from "@bokehjs/core/properties"
 import {isString} from "@bokehjs/core/util/types"
+import {assert} from "@bokehjs/core/util/assert"
 
 import {generate_require_loader} from "./loader"
 import {WidgetManager, ModelBundle} from "./manager"
+
+import {WidgetView} from "@jupyter-widgets/base"
 
 const widget_managers: WeakMap<Document, WidgetManager> = new WeakMap()
 
@@ -16,6 +19,7 @@ export class IPyWidgetView extends LayoutDOMView {
   override model: IPyWidget
 
   private rendered: boolean = false
+  private ipy_view: WidgetView | null = null
 
   get child_models(): UIElement[] {
     return []
@@ -25,12 +29,11 @@ export class IPyWidgetView extends LayoutDOMView {
     super.render()
     this.container = div({style: "display: contents;"})
     this.shadow_el.append(this.container)
-    if (!this.rendered) {
-      this._render().then(() => {
-        this.rendered = true
-        this.notify_finished()
-      })
-    }
+    this._render().then(() => {
+      this.invalidate_layout() // TODO: this may be overzealous; probably should be removed
+      this.rendered = true
+      this.notify_finished()
+    })
   }
 
   override has_finished(): boolean {
@@ -38,8 +41,21 @@ export class IPyWidgetView extends LayoutDOMView {
   }
 
   async _render(): Promise<void> {
-    const manager = widget_managers.get(this.model.document!)!
-    await manager.render(this.model.bundle, this.container)
+    if (this.ipy_view == null) {
+      const {document} = this.model
+      assert(document != null, "document is null")
+
+      const manager = widget_managers.get(document)
+      assert(manager != null, "manager is null")
+
+      this.ipy_view = await manager.render(this.model.bundle, this.container)
+    } else {
+      this.container.append(this.ipy_view.el)
+    }
+
+    if (this.ipy_view != null) {
+      this.ipy_view.trigger("displayed", this.ipy_view)
+    }
   }
 }
 
