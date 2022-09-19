@@ -10,6 +10,7 @@ from bokeh.models.layouts import HTMLBox
 
 from ipywidgets import embed, Widget
 
+from .kernel import kernel
 
 class IPyWidget(HTMLBox):
     """Wrap an IPyWidget for embedding in a bokeh app.
