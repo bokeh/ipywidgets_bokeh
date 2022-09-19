@@ -9,9 +9,7 @@ function require_promise(pkg: string | string[]): Promise<any> {
   return new Promise((resolve, reject) => requirejs(pkg, resolve, reject))
 }
 
-const cdn = 'https://unpkg.com'
-
-function get_cdn_url(moduleName: string, moduleVersion: string) {
+function get_cdn_url(moduleName: string, moduleVersion: string, cdn: string) {
   let packageName = moduleName
   let fileName = 'index' // default filename
   // if a '/' is present, like 'foo/bar', packageName is changed to 'foo', and path to 'bar'
@@ -32,13 +30,15 @@ function get_cdn_url(moduleName: string, moduleVersion: string) {
 
 const mods = new Set()
 
-export function require_loader(moduleName: string, moduleVersion: string): Promise<any> {
-  if (!mods.has(moduleName)) {
-    mods.add(moduleName)
-    const conf: {paths: {[key: string]: string}} = {paths: {}}
-    conf.paths[moduleName] = get_cdn_url(moduleName, moduleVersion)
-    _requirejs.config(conf)
+export function generate_require_loader(cdn: string): any {
+  return function require_loader(moduleName: string, moduleVersion: string): Promise<any> {
+    if (!mods.has(moduleName)) {
+      mods.add(moduleName)
+      const conf: {paths: {[key: string]: string}} = {paths: {}}
+      conf.paths[moduleName] = get_cdn_url(moduleName, moduleVersion, cdn)
+      _requirejs.config(conf)
+    }
+    console.debug(`Loading ${moduleName}@${moduleVersion} from ${cdn}`)
+    return require_promise([moduleName])
   }
-  console.debug(`Loading ${moduleName}@${moduleVersion} from ${cdn}`)
-  return require_promise([moduleName])
 }
