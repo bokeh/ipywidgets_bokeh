@@ -18,12 +18,9 @@ class IPyWidget(HTMLBox):
     ----------
     widget : Widget
         ipywidget to wrap for embedding in a bokeh app
+    cdn : str
+        The CDN for external JS resources.
     **kwargs
-        All kwargs are passed to bokeh.model.Model except 'cdn', if present.
-
-        The CDN for external JS resources uses the 'cdn' kwarg if set; otherwise use
-        self.default_cdn. After initialization (but before rendering), the CDN can be
-        set using IPyWidget.set_cdn; see below.
 
     """
 
@@ -32,15 +29,11 @@ class IPyWidget(HTMLBox):
     ]
 
     bundle = Any()
-    cdn = String()
-    default_cdn = 'https://unpkg.com'
+    cdn = String(default="https://unpkg.com")
 
     def __init__(self, *, widget: Widget, **kwargs):
-        cdn = kwargs.pop('cdn', self.default_cdn)
-
         super().__init__(**kwargs)
         spec = widget.get_view_spec()
         state = Widget.get_manager_state(widgets=[])
         state["state"] = embed.dependency_state([widget], drop_defaults=True)
         self.bundle = {'spec': spec, 'state': state}
-        self.cdn = cdn

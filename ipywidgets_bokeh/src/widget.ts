@@ -51,7 +51,6 @@ export class IPyWidget extends HTMLBox {
 
   constructor(attrs?: Partial<IPyWidget.Attrs>) {
     super(attrs)
-    console.log({cdn: this.properties.cdn.get_value()})
   }
 
   static __name__ = "IPyWidget"
@@ -62,7 +61,7 @@ export class IPyWidget extends HTMLBox {
 
     this.define<IPyWidget.Props>({
       bundle: [ p.Any ],
-      cdn: [ p.String ],
+      cdn: [ p.String, "https://unpkg.com" ],
     })
   }
 
@@ -71,7 +70,7 @@ export class IPyWidget extends HTMLBox {
 
     if (!widget_managers.has(doc)) {
       const manager = new WidgetManager({
-        loader: generate_require_loader(this.properties.cdn.get_value())
+        loader: generate_require_loader(this.cdn),
       })
       widget_managers.set(doc, manager)
 
