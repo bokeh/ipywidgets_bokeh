@@ -37,4 +37,4 @@ class IPyWidget(HTMLBox):
         spec = widget.get_view_spec()
         state = Widget.get_manager_state(widgets=[])
         state["state"] = embed.dependency_state([widget], drop_defaults=True)
-        self.bundle = {'spec': spec, 'state': state}
+        self.bundle = dict(spec=spec, state=state)
