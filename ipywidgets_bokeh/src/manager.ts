@@ -144,9 +144,14 @@ export class WidgetManager extends HTMLManager {
     try {
       const models = await this.set_state(state)
       for (const model of models) {
+        if (this._model_objs.hasOwnProperty(model.model_id))
+	  continue
         const comm = await this._create_comm(this.comm_target_name, model.model_id)
-        this._attach_comm(comm, model);
-        this._model_objs[model.model_id] = model
+        this._attach_comm(comm, model)
+	this._model_objs[model.model_id] = model
+	model.once('comm:close', () => {
+          delete this._model_objs[model.model_id];
+	});
       }
       const model = models.find((item) => item.model_id == spec.model_id)
 
