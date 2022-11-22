@@ -24,8 +24,9 @@ requirements:
     - nodejs 14.*
   run:
     - python
-    - bokeh >=2.0.0 # TODO >=2.0.1
+    - bokeh 2.*
     - ipywidgets >=7.5
+    - ipykernel 6.*,!=6.18.0
 
 test:
   imports:
