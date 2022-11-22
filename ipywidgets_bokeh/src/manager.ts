@@ -1,44 +1,27 @@
 import {HTMLManager} from "@jupyter-widgets/html-manager"
-import {ModelOptions, IClassicComm, shims} from "@jupyter-widgets/base"
+import {IModelOptions, IClassicComm, shims} from "@jupyter-widgets/base"
 import * as utils from "@jupyter-widgets/base"
+import {IState, IManagerState} from "@jupyter-widgets/base-manager"
 import {Kernel, KernelManager, ServerConnection} from "@jupyterlab/services"
 
 import {isString} from "@bokehjs/core/util/types"
 
 export type WidgetModel = utils.DOMWidgetModel
 
-export type Buffer = {
-  path: (string | number)[]
-  data: string
-  encoding: "hex" | "base64"
-}
-
-export type ModelState = {
-  model_name: string
-  model_module: string
-  model_module_version: string
-  state: object
-  buffers: Buffer[]
-}
-
 export type ModelBundle = {
   spec: {model_id: string}
-  state: State
-}
-
-export type State = {
-  version_major?: number
-  state: {[key: string]: ModelState}
+  state: IManagerState
 }
 
 let _kernel_id = 0
 
 export class WidgetManager extends HTMLManager {
 
-  private _known_models: {[key: string]: ModelState} = {}
+  private _known_models: {[key: string]: IState} = {}
   private kernel_manager: KernelManager
   private kernel: Kernel.IKernelConnection
   private ws: WebSocket | null = null
+  private _model_objs: { [key: string]: WidgetModel } = {}
 
   protected bk_send?: (data: string | ArrayBuffer) => void
 
@@ -133,10 +116,23 @@ export class WidgetManager extends HTMLManager {
     this.kernel_manager = new KernelManager({serverSettings: settings})
     const kernel_model: Kernel.IModel = {name: "bokeh_kernel", id: `${_kernel_id++}`}
     this.kernel = this.kernel_manager.connectTo({model: kernel_model, handleComms: true})
-
     this.kernel.registerCommTarget(this.comm_target_name, (comm, msg) => {
-      this.handle_comm_open(new shims.services.Comm(comm), msg)
+      const model = this._model_objs[msg.content.comm_id]
+      if (model != null) {
+        const comm_wrapper = new shims.services.Comm(comm)
+        this._attach_comm(comm_wrapper, model);
+      }
     })
+  }
+
+  _attach_comm(comm: any, model: WidgetModel) {
+    model.comm = comm;
+
+    // Hook comm messages up to model.
+    comm.on_close(model._handle_comm_closed.bind(model));
+    comm.on_msg(model._handle_comm_msg.bind(model));
+
+    model.comm_live = true;
   }
 
   async render(bundle: ModelBundle, el: HTMLElement): Promise<void> {
@@ -147,9 +143,21 @@ export class WidgetManager extends HTMLManager {
     }
     try {
       const models = await this.set_state(state)
+      for (const model of models) {
+        if (this._model_objs.hasOwnProperty(model.model_id))
+	  continue
+        const comm = await this._create_comm(this.comm_target_name, model.model_id)
+        this._attach_comm(comm, model)
+	this._model_objs[model.model_id] = model
+	model.once('comm:close', () => {
+          delete this._model_objs[model.model_id];
+	});
+      }
       const model = models.find((item) => item.model_id == spec.model_id)
+
       if (model != null) {
-        await this.display_model(undefined as any, model, {el})
+        const view = await this.create_view(model, {el})
+        await this.display_view(view, el)
       }
     } finally {
       for (const id in new_models) {
@@ -180,7 +188,7 @@ export class WidgetManager extends HTMLManager {
     return Promise.resolve(this._known_models)
   }
 
-  async new_model(options: ModelOptions, serialized_state?: any): Promise<WidgetModel> {
+  async new_model(options: IModelOptions, serialized_state?: any): Promise<WidgetModel> {
     // XXX: this is a hack that allows to connect to a live comm and use initial
     // state sent via a state bundle, essentially turning new_model(modelCreate)
     // into new_model(modelCreate, modelState) in ManagerBase.set_state(), possibly
