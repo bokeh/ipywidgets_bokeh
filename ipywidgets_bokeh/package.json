@@ -30,7 +30,9 @@
     "dev": "tsc; webpack",
     "build": "tsc && webpack --mode=production",
     "clean": "rimraf dist",
-    "prepack": "npm run clean && npm run build"
+    "prepack": "npm run clean && npm run build",
+    "test": "echo 'TODO'",
+    "lint": "echo 'TODO'"
   },
   "files": [
     "dist/lib/**/*.{js,js.map,d.ts}",
