@@ -10,11 +10,11 @@ import {WidgetManager, ModelBundle} from "./manager"
 const widget_managers: WeakMap<Document, WidgetManager> = new WeakMap()
 
 export class IPyWidgetView extends HTMLBoxView {
-  model: IPyWidget
+  declare model: IPyWidget
 
   private rendered: boolean = false
 
-  render(): void {
+  override render(): void {
     super.render()
     if (!this.rendered) {
       this._render().then(() => {
@@ -25,7 +25,7 @@ export class IPyWidgetView extends HTMLBoxView {
     }
   }
 
-  has_finished(): boolean {
+  override has_finished(): boolean {
     return this.rendered && super.has_finished()
   }
 
@@ -47,15 +47,15 @@ export namespace IPyWidget {
 export interface IPyWidget extends IPyWidget.Attrs {}
 
 export class IPyWidget extends HTMLBox {
-  properties: IPyWidget.Props
-  __view_type__: IPyWidgetView
+  declare properties: IPyWidget.Props
+  declare __view_type__: IPyWidgetView
 
   constructor(attrs?: Partial<IPyWidget.Attrs>) {
     super(attrs)
   }
 
-  static __name__ = "IPyWidget"
-  static __module__ = "ipywidgets_bokeh.widget"
+  static override __name__ = "IPyWidget"
+  static override __module__ = "ipywidgets_bokeh.widget"
 
   static {
     this.prototype.default_view = IPyWidgetView
@@ -66,7 +66,7 @@ export class IPyWidget extends HTMLBox {
     }))
   }
 
-  protected _doc_attached(): void {
+  protected override _doc_attached(): void {
     const doc = this.document!
 
     if (!widget_managers.has(doc)) {

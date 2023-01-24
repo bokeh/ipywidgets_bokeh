@@ -25,9 +25,9 @@ export class WidgetManager extends HTMLManager {
 
   protected bk_send?: (data: string | ArrayBuffer) => void
 
-  make_WebSocket() {
+  make_WebSocket(): typeof WebSocket {
     const manager = this
-    return class PseudoWebSocket implements WebSocket {
+    return class implements WebSocket {
       binaryType: BinaryType
 
       readonly bufferedAmount: number
@@ -45,7 +45,10 @@ export class WidgetManager extends HTMLManager {
       static readonly CONNECTING: number = 2
       static readonly OPEN: number = 3
 
-      constructor(readonly url: string, _protocols?: string | string[]) {
+      readonly url: string
+
+      constructor(url: string | URL, _protocols?: string | string[]) {
+        this.url = url instanceof URL ? url.toString() : url
         manager.ws = this
       }
 
@@ -166,7 +169,7 @@ export class WidgetManager extends HTMLManager {
     }
   }
 
-  async _create_comm(target_name: string, model_id: string, data?: any, metadata?: any,
+  override async _create_comm(target_name: string, model_id: string, data?: any, metadata?: any,
       buffers?: ArrayBuffer[] | ArrayBufferView[]): Promise<IClassicComm> {
     const comm = (() => {
       const key = target_name + model_id
@@ -184,11 +187,11 @@ export class WidgetManager extends HTMLManager {
     return new shims.services.Comm(comm)
   }
 
-  _get_comm_info(): Promise<any> {
+  override _get_comm_info(): Promise<any> {
     return Promise.resolve(this._known_models)
   }
 
-  async new_model(options: IModelOptions, serialized_state?: any): Promise<WidgetModel> {
+  override async new_model(options: IModelOptions, serialized_state?: any): Promise<WidgetModel> {
     // XXX: this is a hack that allows to connect to a live comm and use initial
     // state sent via a state bundle, essentially turning new_model(modelCreate)
     // into new_model(modelCreate, modelState) in ManagerBase.set_state(), possibly

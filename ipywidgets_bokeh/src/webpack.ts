@@ -10,3 +10,5 @@ if (script instanceof HTMLScriptElement) {
     __webpack_require__.p = url
   }
 }
+
+export {}
