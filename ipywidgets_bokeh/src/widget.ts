@@ -48,6 +48,7 @@ export interface IPyWidget extends IPyWidget.Attrs {}
 
 export class IPyWidget extends HTMLBox {
   properties: IPyWidget.Props
+  __view_type__: IPyWidgetView
 
   constructor(attrs?: Partial<IPyWidget.Attrs>) {
     super(attrs)
@@ -56,13 +57,13 @@ export class IPyWidget extends HTMLBox {
   static __name__ = "IPyWidget"
   static __module__ = "ipywidgets_bokeh.widget"
 
-  static init_IPyWidget(): void {
+  static {
     this.prototype.default_view = IPyWidgetView
 
-    this.define<IPyWidget.Props>({
-      bundle: [ p.Any ],
-      cdn: [ p.String, "https://unpkg.com" ],
-    })
+    this.define<IPyWidget.Props>(({Any, String}) => ({
+      bundle: [ Any ],
+      cdn: [ String, "https://unpkg.com" ],
+    }))
   }
 
   protected _doc_attached(): void {
@@ -89,4 +90,3 @@ export class IPyWidget extends HTMLBox {
     }
   }
 }
-IPyWidget.init_IPyWidget()
