@@ -1,0 +1,65 @@
+name: ipywidgets-bokeh-CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        os: [ubuntu-22.04, macos-latest, windows-latest]
+        node-version: [18.x]
+
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v3
+
+      - name: Install node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Upgrade npm
+        shell: bash
+        run: |
+          npm install --location=global npm@8
+
+      - name: Install dependencies
+        working-directory: ./ipywidgets_bokeh
+        shell: bash
+        run: |
+          npm ci --no-progress
+
+      - name: Build ipywidgets-bokeh
+        working-directory: ./ipywidgets_bokeh
+        shell: bash
+        run: |
+          npm run build
+
+      - name: Run tests
+        if: success() || failure()
+        working-directory: ./ipywidgets_bokeh
+        shell: bash
+        run: |
+          npm run test
+
+      - name: Lint codebase
+        if: success() || failure()
+        working-directory: ./ipywidgets_bokeh
+        shell: bash
+        run: |
+          npm run lint
+
+      - name: Check repository status
+        if: success() || failure()
+        shell: bash
+        run: |
+          OUTPUT=$(git status --short .)
+          if [[ ! -z "$OUTPUT" ]]; then echo $OUTPUT; exit 1; fi
