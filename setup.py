@@ -24,8 +24,9 @@ class BuildJS(Command):
         finally:
             os.chdir("..")
 
+
 install_requires = [
-    "bokeh >=2.4.0,<2.5",
+    "bokeh >=2.4.0",
     "ipywidgets >=7.5.0",
 ]
 
