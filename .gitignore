@@ -1,3 +1,9 @@
-/dist/
-/*.egg-info/
+# Python
+*.egg-info/
 __pycache__/
+.ipynb_checkpoints/
+
+# [Java|Type]Script
+dist/
+node_modules/
+bokeh*.tgz
