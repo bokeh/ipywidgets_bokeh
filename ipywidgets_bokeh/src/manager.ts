@@ -1,13 +1,15 @@
+import * as base from "@jupyter-widgets/base"
+import * as outputWidgets from "@jupyter-widgets/output"
+import * as controls from "@jupyter-widgets/controls"
+
 import {HTMLManager} from "@jupyter-widgets/html-manager"
-import {IModelOptions, IClassicComm, shims} from "@jupyter-widgets/base"
-import * as utils from "@jupyter-widgets/base"
+import {WidgetModel, WidgetView, IModelOptions, IClassicComm, shims} from "@jupyter-widgets/base"
 import {IState, IManagerState} from "@jupyter-widgets/base-manager"
+
 import {Kernel, KernelManager, ServerConnection} from "@jupyterlab/services"
 
 import {isString} from "@bokehjs/core/util/types"
 import {keys, entries, to_object} from "@bokehjs/core/util/object"
-
-export type WidgetModel = utils.DOMWidgetModel
 
 export type ModelBundle = {
   spec: {model_id: string}
@@ -126,6 +128,7 @@ export class WidgetManager extends HTMLManager {
         const comm_wrapper = new shims.services.Comm(comm)
         this._attach_comm(comm_wrapper, model)
       }
+      delete this._model_objs[msg.content.comm_id]
     })
   }
 
@@ -209,4 +212,33 @@ export class WidgetManager extends HTMLManager {
     }
     return super.new_model(options, serialized_state)
   }
+
+  protected override loadClass(
+    className: string,
+    moduleName: string,
+    moduleVersion: string
+  ): Promise<typeof WidgetModel | typeof WidgetView> {
+    return new Promise((resolve, reject) => {
+      if (moduleName === '@jupyter-widgets/base') {
+        resolve(base);
+      } else if (moduleName === '@jupyter-widgets/controls') {
+        resolve(controls);
+      } else if (moduleName === '@jupyter-widgets/output') {
+        resolve(outputWidgets);
+      } else if (this.loader !== undefined) {
+        resolve(this.loader(moduleName, moduleVersion));
+      } else {
+        reject(`Could not load module ${moduleName}@${moduleVersion}`);
+      }
+    }).then((module) => {
+      if ((module as any)[className]) {
+        return (module as any)[className];
+      } else {
+        return Promise.reject(
+          `Class ${className} not found in module ${moduleName}@${moduleVersion}`
+        );
+      }
+    });
+  }
+
 }
