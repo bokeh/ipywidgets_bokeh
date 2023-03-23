@@ -21,7 +21,7 @@ requirements:
   build:
     - python
     - setuptools
-    - nodejs 14.*
+    - nodejs 18.*
   run:
     - python
     - bokeh 2.*
