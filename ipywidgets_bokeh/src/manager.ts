@@ -114,7 +114,7 @@ export class WidgetManager extends HTMLManager {
       Request,
       WebSocket: this.make_WebSocket(),
       appendToken: false,
-    };
+    }
 
     this.kernel_manager = new KernelManager({serverSettings: settings})
     const kernel_model: Kernel.IModel = {name: "bokeh_kernel", id: `${_kernel_id++}`}
@@ -123,19 +123,19 @@ export class WidgetManager extends HTMLManager {
       const model = this._model_objs[msg.content.comm_id]
       if (model != null) {
         const comm_wrapper = new shims.services.Comm(comm)
-        this._attach_comm(comm_wrapper, model);
+        this._attach_comm(comm_wrapper, model)
       }
     })
   }
 
   _attach_comm(comm: any, model: WidgetModel) {
-    model.comm = comm;
+    model.comm = comm
 
     // Hook comm messages up to model.
-    comm.on_close(model._handle_comm_closed.bind(model));
-    comm.on_msg(model._handle_comm_msg.bind(model));
+    comm.on_close(model._handle_comm_closed.bind(model))
+    comm.on_msg(model._handle_comm_msg.bind(model))
 
-    model.comm_live = true;
+    model.comm_live = true
   }
 
   async render(bundle: ModelBundle, el: HTMLElement): Promise<void> {
@@ -148,13 +148,13 @@ export class WidgetManager extends HTMLManager {
       const models = await this.set_state(state)
       for (const model of models) {
         if (this._model_objs.hasOwnProperty(model.model_id))
-	  continue
+          continue
         const comm = await this._create_comm(this.comm_target_name, model.model_id)
         this._attach_comm(comm, model)
-	this._model_objs[model.model_id] = model
-	model.once('comm:close', () => {
-          delete this._model_objs[model.model_id];
-	});
+        this._model_objs[model.model_id] = model
+        model.once("comm:close", () => {
+          delete this._model_objs[model.model_id]
+        })
       }
       const model = models.find((item) => item.model_id == spec.model_id)
 
