@@ -5,6 +5,7 @@ import {IState, IManagerState} from "@jupyter-widgets/base-manager"
 import {Kernel, KernelManager, ServerConnection} from "@jupyterlab/services"
 
 import {isString} from "@bokehjs/core/util/types"
+import {keys, entries, to_object} from "@bokehjs/core/util/object"
 
 export type WidgetModel = utils.DOMWidgetModel
 
@@ -17,11 +18,11 @@ let _kernel_id = 0
 
 export class WidgetManager extends HTMLManager {
 
-  private _known_models: {[key: string]: IState} = {}
+  private _known_models: Map<string, IState> = new Map()
   private kernel_manager: KernelManager
   private kernel: Kernel.IKernelConnection
   private ws: WebSocket | null = null
-  private _model_objs: { [key: string]: WidgetModel } = {}
+  private _model_objs: Map<string, WidgetModel> = new Map()
 
   protected bk_send?: (data: string | ArrayBuffer) => void
 
@@ -120,7 +121,7 @@ export class WidgetManager extends HTMLManager {
     const kernel_model: Kernel.IModel = {name: "bokeh_kernel", id: `${_kernel_id++}`}
     this.kernel = this.kernel_manager.connectTo({model: kernel_model, handleComms: true})
     this.kernel.registerCommTarget(this.comm_target_name, (comm, msg) => {
-      const model = this._model_objs[msg.content.comm_id]
+      const model = this._model_objs.get(msg.content.comm_id)
       if (model != null) {
         const comm_wrapper = new shims.services.Comm(comm)
         this._attach_comm(comm_wrapper, model)
@@ -141,19 +142,19 @@ export class WidgetManager extends HTMLManager {
   async render(bundle: ModelBundle, el: HTMLElement): Promise<void> {
     const {spec, state} = bundle
     const new_models = state.state
-    for (const id in new_models) {
-      this._known_models[id] = new_models[id]
+    for (const [id, new_model] of entries(new_models)) {
+      this._known_models.set(id, new_model)
     }
     try {
       const models = await this.set_state(state)
       for (const model of models) {
-        if (this._model_objs.hasOwnProperty(model.model_id))
+        if (this._model_objs.has(model.model_id))
           continue
         const comm = await this._create_comm(this.comm_target_name, model.model_id)
         this._attach_comm(comm, model)
-        this._model_objs[model.model_id] = model
+        this._model_objs.set(model.model_id, model)
         model.once("comm:close", () => {
-          delete this._model_objs[model.model_id]
+          this._model_objs.delete(model.model_id)
         })
       }
       const model = models.find((item) => item.model_id == spec.model_id)
@@ -163,8 +164,8 @@ export class WidgetManager extends HTMLManager {
         await this.display_view(view, el)
       }
     } finally {
-      for (const id in new_models) {
-        delete this._known_models[id]
+      for (const id of keys(new_models)) {
+        this._known_models.delete(id)
       }
     }
   }
@@ -187,8 +188,8 @@ export class WidgetManager extends HTMLManager {
     return new shims.services.Comm(comm)
   }
 
-  override _get_comm_info(): Promise<any> {
-    return Promise.resolve(this._known_models)
+  override _get_comm_info(): Promise<{}> {
+    return Promise.resolve(to_object(this._known_models))
   }
 
   override async new_model(options: IModelOptions, serialized_state?: any): Promise<WidgetModel> {
@@ -200,8 +201,8 @@ export class WidgetManager extends HTMLManager {
     if (serialized_state === undefined) {
       const models = this._known_models
       const {model_id} = options
-      if (model_id != null && models[model_id] != null) {
-        const model = models[model_id]
+      if (model_id != null && models.has(model_id)) {
+        const model = models.get(model_id)!
         serialized_state = model.state
       } else
         throw new Error("internal error in new_model()")
