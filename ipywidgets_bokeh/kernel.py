@@ -125,7 +125,7 @@ class BokehKernel(ipykernel.kernelbase.Kernel):
 
         self.iopub_socket.channel = 'iopub'
         self.session.stream = self.iopub_socket
-        self.comm_manager = CommManager(parent=self, kernel=self)
+        self.comm_manager = CommManager()
         self.shell = None
         self.log = logging.getLogger('fake')
 
