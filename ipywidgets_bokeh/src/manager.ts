@@ -216,29 +216,27 @@ export class WidgetManager extends HTMLManager {
   protected override loadClass(
     className: string,
     moduleName: string,
-    moduleVersion: string
+    moduleVersion: string,
   ): Promise<typeof WidgetModel | typeof WidgetView> {
     return new Promise((resolve, reject) => {
-      if (moduleName === '@jupyter-widgets/base') {
-        resolve(base);
-      } else if (moduleName === '@jupyter-widgets/controls') {
-        resolve(controls);
-      } else if (moduleName === '@jupyter-widgets/output') {
-        resolve(outputWidgets);
+      if (moduleName === "@jupyter-widgets/base") {
+        resolve(base)
+      } else if (moduleName === "@jupyter-widgets/controls") {
+        resolve(controls)
+      } else if (moduleName === "@jupyter-widgets/output") {
+        resolve(outputWidgets)
       } else if (this.loader !== undefined) {
-        resolve(this.loader(moduleName, moduleVersion));
+        resolve(this.loader(moduleName, moduleVersion))
       } else {
-        reject(`Could not load module ${moduleName}@${moduleVersion}`);
+        reject(`Could not load module ${moduleName}@${moduleVersion}`)
       }
     }).then((module) => {
       if ((module as any)[className]) {
-        return (module as any)[className];
+        return (module as any)[className]
       } else {
-        return Promise.reject(
-          `Class ${className} not found in module ${moduleName}@${moduleVersion}`
-        );
+        return Promise.reject(`Class ${className} not found in module ${moduleName}@${moduleVersion}`)
       }
-    });
+    })
   }
 
 }
