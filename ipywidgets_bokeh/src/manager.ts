@@ -11,6 +11,53 @@ import {Kernel, KernelManager, ServerConnection} from "@jupyterlab/services"
 import {isString} from "@bokehjs/core/util/types"
 import {keys, entries, to_object} from "@bokehjs/core/util/object"
 
+abstract class CommsWebSocket implements WebSocket {
+  binaryType: BinaryType
+
+  readonly bufferedAmount: number
+  readonly extensions: string
+  readonly protocol: string
+  readonly readyState: number
+
+  readonly CONNECTING: 0 = 0
+  readonly OPEN: 1 = 1
+  readonly CLOSING: 2 = 2
+  readonly CLOSED: 3 = 3
+
+  static readonly CONNECTING: 0 = 0
+  static readonly OPEN: 1 = 1
+  static readonly CLOSING: 2 = 2
+  static readonly CLOSED: 3 = 3
+
+  readonly url: string
+
+  constructor(url: string | URL, _protocols?: string | string[]) {
+    this.url = url instanceof URL ? url.toString() : url
+  }
+
+  close(code?: number, reason?: string): void {
+    const event = new CloseEvent("close", {code, reason})
+    this.onclose?.(event)
+  }
+
+  abstract send(data: string | ArrayBufferLike | Blob | ArrayBufferView): void
+
+  onclose: ((this: WebSocket, ev: CloseEvent) => unknown) | null = null
+  onerror: ((this: WebSocket, ev: Event) => unknown) | null = null
+  onmessage: ((this: WebSocket, ev: MessageEvent) => unknown) | null = null
+  onopen: ((this: WebSocket, ev: Event) => unknown) | null = null
+
+  addEventListener(_type: string, _listener: EventListenerOrEventListenerObject, _options?: boolean | AddEventListenerOptions): void {
+    throw new Error("not implemented")
+  }
+  removeEventListener(_type: string, _listener: EventListenerOrEventListenerObject, _options?: boolean | EventListenerOptions): void {
+    throw new Error("not implemented")
+  }
+  dispatchEvent(_event: Event): boolean {
+    throw new Error("not implemented")
+  }
+}
+
 export type ModelBundle = {
   spec: {model_id: string}
   state: IManagerState
@@ -26,64 +73,7 @@ export class WidgetManager extends HTMLManager {
   private ws: WebSocket | null = null
   private _model_objs: Map<string, WidgetModel> = new Map()
 
-  protected bk_send?: (data: string | ArrayBuffer) => void
-
-  make_WebSocket(): typeof WebSocket {
-    const manager = this
-    return class implements WebSocket {
-      binaryType: BinaryType
-
-      readonly bufferedAmount: number
-      readonly extensions: string
-      readonly protocol: string
-      readonly readyState: number
-
-      readonly CONNECTING: 0 = 0
-      readonly OPEN: 1 = 1
-      readonly CLOSING: 2 = 2
-      readonly CLOSED: 3 = 3
-
-      static readonly CONNECTING: 0 = 0
-      static readonly OPEN: 1 = 1
-      static readonly CLOSING: 2 = 2
-      static readonly CLOSED: 3 = 3
-
-      readonly url: string
-
-      constructor(url: string | URL, _protocols?: string | string[]) {
-        this.url = url instanceof URL ? url.toString() : url
-        manager.ws = this
-      }
-
-      close(code?: number, reason?: string): void {
-        const event = new CloseEvent("close", {code, reason})
-        this.onclose?.(event)
-      }
-
-      send(data: string | ArrayBufferLike | Blob | ArrayBufferView): void {
-        if (isString(data) || data instanceof ArrayBuffer) {
-          manager.bk_send?.(data)
-        } else {
-          console.error(`only string and ArrayBuffer types are supported, got ${typeof data}`)
-        }
-      }
-
-      onclose: ((this: WebSocket, ev: CloseEvent) => unknown) | null = null
-      onerror: ((this: WebSocket, ev: Event) => unknown) | null = null
-      onmessage: ((this: WebSocket, ev: MessageEvent) => unknown) | null = null
-      onopen: ((this: WebSocket, ev: Event) => unknown) | null = null
-
-      addEventListener(_type: string, _listener: EventListenerOrEventListenerObject, _options?: boolean | AddEventListenerOptions): void {
-        throw new Error("not implemented")
-      }
-      removeEventListener(_type: string, _listener: EventListenerOrEventListenerObject, _options?: boolean | EventListenerOptions): void {
-        throw new Error("not implemented")
-      }
-      dispatchEvent(_event: Event): boolean {
-        throw new Error("not implemented")
-      }
-    }
-  }
+  bk_send?: (data: string | ArrayBuffer) => void
 
   bk_open(send_fn: (data: string | ArrayBuffer) => void): void {
     if (this.ws != null) {
@@ -103,7 +93,9 @@ export class WidgetManager extends HTMLManager {
   constructor(options: any) {
     super(options)
 
+    const manager = this
     const settings: ServerConnection.ISettings = {
+      appendToken: false,
       baseUrl: "",
       appUrl: "",
       wsUrl: "",
@@ -115,8 +107,20 @@ export class WidgetManager extends HTMLManager {
       },
       Headers,
       Request,
-      WebSocket: this.make_WebSocket(),
-      appendToken: false,
+      WebSocket: class extends CommsWebSocket {
+        constructor(url: string | URL, protocols?: string | string[]) {
+          super(url, protocols)
+          manager.ws = this
+        }
+
+        send(data: string | ArrayBufferLike | Blob | ArrayBufferView): void {
+          if (isString(data) || data instanceof ArrayBuffer) {
+            manager.bk_send?.(data)
+          } else {
+            console.error(`only string and ArrayBuffer types are supported, got ${typeof data}`)
+          }
+        }
+      },
     }
 
     this.kernel_manager = new KernelManager({serverSettings: settings})
