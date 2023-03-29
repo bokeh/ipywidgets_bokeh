@@ -29,7 +29,7 @@ jobs:
       - name: Upgrade npm
         shell: bash
         run: |
-          npm install --location=global npm@8
+          npm install --location=global npm
 
       - name: Install dependencies
         working-directory: ./ipywidgets_bokeh
