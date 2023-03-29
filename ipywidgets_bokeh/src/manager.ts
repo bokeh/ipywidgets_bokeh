@@ -88,7 +88,7 @@ export class WidgetManager extends HTMLManager {
     }
   }
 
-  private _comms: Map<string, any /* Comm */> = new Map()
+  private _comms: Map<string, Kernel.IComm> = new Map()
 
   constructor(options: any) {
     super(options)
@@ -181,8 +181,9 @@ export class WidgetManager extends HTMLManager {
       buffers?: ArrayBuffer[] | ArrayBufferView[]): Promise<IClassicComm> {
     const comm = (() => {
       const key = target_name + model_id
-      if (this._comms.has(key))
-        return this._comms.get(key)
+      const comm = this._comms.get(key)
+      if (comm != null)
+        return comm
       else {
         const comm = this.kernel.createComm(target_name, model_id)
         this._comms.set(key, comm)
