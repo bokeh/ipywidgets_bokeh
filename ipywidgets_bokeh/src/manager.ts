@@ -1,13 +1,62 @@
+import * as base from "@jupyter-widgets/base"
+import * as outputWidgets from "@jupyter-widgets/output"
+import * as controls from "@jupyter-widgets/controls"
+
 import {HTMLManager} from "@jupyter-widgets/html-manager"
-import {IModelOptions, IClassicComm, shims} from "@jupyter-widgets/base"
-import * as utils from "@jupyter-widgets/base"
+import {WidgetModel, WidgetView, IModelOptions, IClassicComm, shims} from "@jupyter-widgets/base"
 import {IState, IManagerState} from "@jupyter-widgets/base-manager"
+
 import {Kernel, KernelManager, ServerConnection} from "@jupyterlab/services"
 
 import {isString} from "@bokehjs/core/util/types"
 import {keys, entries, to_object} from "@bokehjs/core/util/object"
 
-export type WidgetModel = utils.DOMWidgetModel
+abstract class CommsWebSocket implements WebSocket {
+  binaryType: BinaryType
+
+  readonly bufferedAmount: number
+  readonly extensions: string
+  readonly protocol: string
+  readonly readyState: number
+
+  readonly CONNECTING: 0 = 0
+  readonly OPEN: 1 = 1
+  readonly CLOSING: 2 = 2
+  readonly CLOSED: 3 = 3
+
+  static readonly CONNECTING: 0 = 0
+  static readonly OPEN: 1 = 1
+  static readonly CLOSING: 2 = 2
+  static readonly CLOSED: 3 = 3
+
+  readonly url: string
+
+  constructor(url: string | URL, _protocols?: string | string[]) {
+    this.url = url instanceof URL ? url.toString() : url
+  }
+
+  close(code?: number, reason?: string): void {
+    const event = new CloseEvent("close", {code, reason})
+    this.onclose?.(event)
+  }
+
+  abstract send(data: string | ArrayBufferLike | Blob | ArrayBufferView): void
+
+  onclose: ((this: WebSocket, ev: CloseEvent) => unknown) | null = null
+  onerror: ((this: WebSocket, ev: Event) => unknown) | null = null
+  onmessage: ((this: WebSocket, ev: MessageEvent) => unknown) | null = null
+  onopen: ((this: WebSocket, ev: Event) => unknown) | null = null
+
+  addEventListener(_type: string, _listener: EventListenerOrEventListenerObject, _options?: boolean | AddEventListenerOptions): void {
+    throw new Error("not implemented")
+  }
+  removeEventListener(_type: string, _listener: EventListenerOrEventListenerObject, _options?: boolean | EventListenerOptions): void {
+    throw new Error("not implemented")
+  }
+  dispatchEvent(_event: Event): boolean {
+    throw new Error("not implemented")
+  }
+}
 
 export type ModelBundle = {
   spec: {model_id: string}
@@ -24,64 +73,7 @@ export class WidgetManager extends HTMLManager {
   private ws: WebSocket | null = null
   private _model_objs: Map<string, WidgetModel> = new Map()
 
-  protected bk_send?: (data: string | ArrayBuffer) => void
-
-  make_WebSocket(): typeof WebSocket {
-    const manager = this
-    return class implements WebSocket {
-      binaryType: BinaryType
-
-      readonly bufferedAmount: number
-      readonly extensions: string
-      readonly protocol: string
-      readonly readyState: number
-
-      readonly CLOSED: number = 0
-      readonly CLOSING: number = 1
-      readonly CONNECTING: number = 2
-      readonly OPEN: number = 3
-
-      static readonly CLOSED: number = 0
-      static readonly CLOSING: number = 1
-      static readonly CONNECTING: number = 2
-      static readonly OPEN: number = 3
-
-      readonly url: string
-
-      constructor(url: string | URL, _protocols?: string | string[]) {
-        this.url = url instanceof URL ? url.toString() : url
-        manager.ws = this
-      }
-
-      close(code?: number, reason?: string): void {
-        const event = new CloseEvent("close", {code, reason})
-        this.onclose?.(event)
-      }
-
-      send(data: string | ArrayBufferLike | Blob | ArrayBufferView): void {
-        if (isString(data) || data instanceof ArrayBuffer) {
-          manager.bk_send?.(data)
-        } else {
-          console.error(`only string and ArrayBuffer types are supported, got ${typeof data}`)
-        }
-      }
-
-      onclose: ((this: WebSocket, ev: CloseEvent) => unknown) | null = null
-      onerror: ((this: WebSocket, ev: Event) => unknown) | null = null
-      onmessage: ((this: WebSocket, ev: MessageEvent) => unknown) | null = null
-      onopen: ((this: WebSocket, ev: Event) => unknown) | null = null
-
-      addEventListener(_type: string, _listener: EventListenerOrEventListenerObject, _options?: boolean | AddEventListenerOptions): void {
-        throw new Error("not implemented")
-      }
-      removeEventListener(_type: string, _listener: EventListenerOrEventListenerObject, _options?: boolean | EventListenerOptions): void {
-        throw new Error("not implemented")
-      }
-      dispatchEvent(_event: Event): boolean {
-        throw new Error("not implemented")
-      }
-    }
-  }
+  bk_send?: (data: string | ArrayBuffer) => void
 
   bk_open(send_fn: (data: string | ArrayBuffer) => void): void {
     if (this.ws != null) {
@@ -96,12 +88,14 @@ export class WidgetManager extends HTMLManager {
     }
   }
 
-  private _comms: Map<string, any /* Comm */> = new Map()
+  private _comms: Map<string, Kernel.IComm> = new Map()
 
   constructor(options: any) {
     super(options)
 
+    const manager = this
     const settings: ServerConnection.ISettings = {
+      appendToken: false,
       baseUrl: "",
       appUrl: "",
       wsUrl: "",
@@ -113,8 +107,20 @@ export class WidgetManager extends HTMLManager {
       },
       Headers,
       Request,
-      WebSocket: this.make_WebSocket(),
-      appendToken: false,
+      WebSocket: class extends CommsWebSocket {
+        constructor(url: string | URL, protocols?: string | string[]) {
+          super(url, protocols)
+          manager.ws = this
+        }
+
+        send(data: string | ArrayBufferLike | Blob | ArrayBufferView): void {
+          if (isString(data) || data instanceof ArrayBuffer) {
+            manager.bk_send?.(data)
+          } else {
+            console.error(`only string and ArrayBuffer types are supported, got ${typeof data}`)
+          }
+        }
+      },
     }
 
     this.kernel_manager = new KernelManager({serverSettings: settings})
@@ -126,6 +132,7 @@ export class WidgetManager extends HTMLManager {
         const comm_wrapper = new shims.services.Comm(comm)
         this._attach_comm(comm_wrapper, model)
       }
+      this._model_objs.delete(msg.content.comm_id)
     })
   }
 
@@ -174,8 +181,9 @@ export class WidgetManager extends HTMLManager {
       buffers?: ArrayBuffer[] | ArrayBufferView[]): Promise<IClassicComm> {
     const comm = (() => {
       const key = target_name + model_id
-      if (this._comms.has(key))
-        return this._comms.get(key)
+      const comm = this._comms.get(key)
+      if (comm != null)
+        return comm
       else {
         const comm = this.kernel.createComm(target_name, model_id)
         this._comms.set(key, comm)
@@ -209,4 +217,31 @@ export class WidgetManager extends HTMLManager {
     }
     return super.new_model(options, serialized_state)
   }
+
+  protected override loadClass(
+    className: string,
+    moduleName: string,
+    moduleVersion: string,
+  ): Promise<typeof WidgetModel | typeof WidgetView> {
+    return new Promise((resolve, reject) => {
+      if (moduleName === "@jupyter-widgets/base") {
+        resolve(base)
+      } else if (moduleName === "@jupyter-widgets/controls") {
+        resolve(controls)
+      } else if (moduleName === "@jupyter-widgets/output") {
+        resolve(outputWidgets)
+      } else if (this.loader !== undefined) {
+        resolve(this.loader(moduleName, moduleVersion))
+      } else {
+        reject(`Could not load module ${moduleName}@${moduleVersion}`)
+      }
+    }).then((module) => {
+      if ((module as any)[className]) {
+        return (module as any)[className]
+      } else {
+        return Promise.reject(`Class ${className} not found in module ${moduleName}@${moduleVersion}`)
+      }
+    })
+  }
+
 }

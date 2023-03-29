@@ -4,10 +4,10 @@
 #
 # The full license is in the file LICENSE.txt, distributed with this software.
 #-----------------------------------------------------------------------------
+from __future__ import annotations
 
 import json
 import logging
-import sys
 
 from distutils.version import LooseVersion
 from functools import partial
@@ -27,11 +27,11 @@ kernel_version = LooseVersion(ipykernel.__version__)
 SESSION_KEY = b'ipywidgets_bokeh'
 
 class WebsocketStream(object):
-    def __init__(self, session):
+    def __init__(self, session: SessionWebsocket):
         self.session = session
 
 class BytesWrap(object):
-    def __init__(self, bytes):
+    def __init__(self, bytes: bytes):
         self.bytes = bytes
 
 class StreamWrapper(object):
@@ -43,7 +43,13 @@ class StreamWrapper(object):
 
 class SessionWebsocket(session.Session):
 
+    parent: BokehKernel
+
     def send(self, stream, msg_type, content=None, parent=None, ident=None, buffers=None, track=False, header=None, metadata=None):
+        if not isinstance(stream, WebsocketStream):
+            self.parent.log.warn(f"skipping {msg_type} ${content}")
+            return
+
         msg = self.msg(msg_type, content=content, parent=parent, header=header, metadata=metadata)
         msg['channel'] = stream.channel
 
@@ -125,9 +131,9 @@ class BokehKernel(ipykernel.kernelbase.Kernel):
 
         self.iopub_socket.channel = 'iopub'
         self.session.stream = self.iopub_socket
-        self.comm_manager = CommManager(parent=self, kernel=self)
+        self.comm_manager = CommManager()
         self.shell = None
-        self.log = logging.getLogger('fake')
+        self.log = logging.getLogger("ipywidgets_bokeh")
 
         comm_msg_types = ['comm_open', 'comm_msg', 'comm_close']
         for msg_type in comm_msg_types:

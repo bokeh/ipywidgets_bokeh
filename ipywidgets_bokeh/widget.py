@@ -6,13 +6,13 @@
 #-----------------------------------------------------------------------------
 
 from bokeh.core.properties import Any, String
-from bokeh.models.layouts import HTMLBox
+from bokeh.models.layouts import LayoutDOM
 
 from ipywidgets import embed, Widget
 
 from .kernel import kernel
 
-class IPyWidget(HTMLBox):
+class IPyWidget(LayoutDOM):
     """Wrap an IPyWidget for embedding in a bokeh app.
 
     Parameters
