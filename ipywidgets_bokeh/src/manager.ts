@@ -128,7 +128,7 @@ export class WidgetManager extends HTMLManager {
         const comm_wrapper = new shims.services.Comm(comm)
         this._attach_comm(comm_wrapper, model)
       }
-      delete this._model_objs[msg.content.comm_id]
+      this._model_objs.delete(msg.content.comm_id)
     })
   }
 
