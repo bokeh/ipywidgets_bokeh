@@ -146,12 +146,13 @@ export class WidgetManager extends HTMLManager {
     model.comm_live = true
   }
 
-  async render(bundle: ModelBundle, el: HTMLElement): Promise<void> {
+  async render(bundle: ModelBundle, el: HTMLElement): Promise<WidgetView | null> {
     const {spec, state} = bundle
     const new_models = state.state
     for (const [id, new_model] of entries(new_models)) {
       this._known_models.set(id, new_model)
     }
+
     try {
       const models = await this.set_state(state)
       for (const model of models) {
@@ -164,12 +165,15 @@ export class WidgetManager extends HTMLManager {
           this._model_objs.delete(model.model_id)
         })
       }
-      const model = models.find((item) => item.model_id == spec.model_id)
 
-      if (model != null) {
-        const view = await this.create_view(model, {el})
-        await this.display_view(view, el)
+      const model = models.find((item) => item.model_id == spec.model_id)
+      if (model == null) {
+        return null
       }
+
+      const view = await this.create_view(model, {el})
+      await this.display_view(view, el)
+      return view
     } finally {
       for (const id of keys(new_models)) {
         this._known_models.delete(id)
