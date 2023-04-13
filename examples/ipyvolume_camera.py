@@ -47,44 +47,68 @@ ip_randomize.on_click(randomize)
 
 ip_vbox = ipw.VBox([ip_x, ip_y, ip_z, ip_randomize])
 
-def change_anglex(change):
-    bk_x.value = round(np.degrees(change["new"]))
-def change_angley(change):
-    bk_y.value = round(np.degrees(change["new"]))
-def change_anglez(change):
-    bk_z.value = round(np.degrees(change["new"]))
-ipv_plot.observe(change_anglex, names="anglex")
-ipv_plot.observe(change_angley, names="angley")
-ipv_plot.observe(change_anglez, names="anglez")
+def change_angle_x(change):
+    new = change["new"]
+    print(f"change_angle_x: new={new}")
+    bk_x.value = round(np.degrees(new))
+
+def change_angle_y(change):
+    new = change["new"]
+    print(f"change_angle_y: new={new}")
+    bk_y.value = round(np.degrees(new))
+
+def change_angle_z(change):
+    new = change["new"]
+    print(f"change_angle_z: new={new}")
+    bk_z.value = round(np.degrees(new))
+
+ipv_plot.observe(change_angle_x, names="anglex")
+ipv_plot.observe(change_angle_y, names="angley")
+ipv_plot.observe(change_angle_z, names="anglez")
 
 def change_bk_x(_attr, _old, new):
+    print(f"change_bk_x: new={new}")
     ip_x.value = new
     ipv_plot.anglex = np.radians(new)
     source.patch(dict(angles=[(0, new)]))
+
 def change_bk_y(_attr, _old, new):
+    print(f"change_bk_y: new={new}")
     ip_y.value = new
     ipv_plot.angley = np.radians(new)
     source.patch(dict(angles=[(1, new)]))
+
 def change_bk_z(_attr, _old, new):
+    print(f"change_bk_z: new={new}")
     ip_z.value = new
     ipv_plot.anglez = np.radians(new)
     source.patch(dict(angles=[(2, new)]))
+
 bk_x.on_change("value", change_bk_x)
 bk_y.on_change("value", change_bk_y)
 bk_z.on_change("value", change_bk_z)
 
 def change_ip_x(change):
-    bk_x.value = change["new"]
+    new = change["new"]
+    print(f"change_ip_x: new={new}")
+    bk_x.value = new
+
 def change_ip_y(change):
-    bk_y.value = change["new"]
+    new = change["new"]
+    print(f"change_ip_y: new={new}")
+    bk_y.value = new
+
 def change_ip_z(change):
-    bk_z.value = change["new"]
+    new = change["new"]
+    print(f"change_ip_z: new={new}")
+    bk_z.value = new
+
 ip_x.observe(change_ip_x, names="value")
 ip_y.observe(change_ip_y, names="value")
 ip_z.observe(change_ip_z, names="value")
 
 bk_hbox = row([bk_vbox, bk_plot])
-ip_hbox = ipw.HBox([ip_vbox, ipv_plot])
+ip_hbox = ipw.VBox([ip_vbox, ipv_plot])
 
 wrapper = IPyWidget(widget=ip_hbox, width=800, height=300)
 layout = column([bk_hbox, wrapper])
