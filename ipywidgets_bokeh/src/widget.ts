@@ -6,6 +6,7 @@ import {MessageSentEvent} from "@bokehjs/document/events"
 import * as p from "@bokehjs/core/properties"
 import {isString} from "@bokehjs/core/util/types"
 import {assert} from "@bokehjs/core/util/assert"
+import {values} from "@bokehjs/core/util/object"
 
 import {generate_require_loader} from "./loader"
 import {WidgetManager, ModelBundle} from "./manager"
@@ -13,6 +14,21 @@ import {WidgetManager, ModelBundle} from "./manager"
 import {WidgetView} from "@jupyter-widgets/base"
 
 const widget_managers: WeakMap<Document, WidgetManager> = new WeakMap()
+
+declare type Module = {
+  id: string
+  loaded: boolean
+  exports: {[key: string]: unknown}
+}
+
+declare type CSSModule = {
+  default: {
+    use(options?: {target?: Element | DocumentFragment}): void
+    unuse(): void
+  }
+}
+
+declare const __webpack_module_cache__: {[key: string]: Module}
 
 export class IPyWidgetView extends LayoutDOMView {
   container: HTMLDivElement
@@ -27,6 +43,27 @@ export class IPyWidgetView extends LayoutDOMView {
 
   override render(): void {
     super.render()
+
+    const css_modules = values(__webpack_module_cache__).filter(({id}) => id.endsWith(".css"))
+    for (const module of css_modules) {
+      const css = (module.exports as CSSModule).default
+      if ("use" in css) {
+        try {
+          css.use({target: this.shadow_el})
+        } catch {
+          console.error("failed to apply a stylesheet")
+          continue
+        }
+      }
+    }
+
+    for (const el of this.shadow_el.children) {
+      if (el instanceof HTMLStyleElement) {
+        const fixed = el.textContent!.replace(/:root/g, ":host")
+        el.textContent = fixed
+      }
+    }
+
     this.container = div({style: "display: contents;"})
     this.shadow_el.append(this.container)
     this._render().then(() => {
