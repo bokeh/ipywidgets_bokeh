@@ -194,9 +194,7 @@ export class WidgetManager extends HTMLManager {
         return comm
       }
     })()
-    if (data || metadata) {
-      comm.open(data, metadata, buffers)
-    }
+    comm.open(data, metadata, buffers)
     return new shims.services.Comm(comm)
   }
 
