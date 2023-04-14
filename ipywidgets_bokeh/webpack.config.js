@@ -5,9 +5,9 @@ const style_loader = {
   loader: "style-loader",
   options: {
     injectType: "lazyStyleTag",
-    insert: function insertIntoTarget(element, options) {
-      const target = options.target ?? document.head
-      target.append(element)
+    insert: (element, options) => {},
+    styleTagTransform: (css, style, options) => {
+      options.handler(css)
     },
   },
 }

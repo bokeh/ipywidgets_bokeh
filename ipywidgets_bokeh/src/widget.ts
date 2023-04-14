@@ -1,10 +1,10 @@
-import {div} from "@bokehjs/core/dom"
+import {div, InlineStyleSheet, StyleSheetLike} from "@bokehjs/core/dom"
 import {LayoutDOM, LayoutDOMView} from "@bokehjs/models/layouts/layout_dom"
 import {UIElement} from "@bokehjs/models/ui/ui_element"
 import {Document} from "@bokehjs/document"
 import {MessageSentEvent} from "@bokehjs/document/events"
 import * as p from "@bokehjs/core/properties"
-import {isString} from "@bokehjs/core/util/types"
+import {isString, isObject} from "@bokehjs/core/util/types"
 import {assert} from "@bokehjs/core/util/assert"
 import {values} from "@bokehjs/core/util/object"
 
@@ -21,10 +21,16 @@ declare type Module = {
   exports: {[key: string]: unknown}
 }
 
-declare type CSSModule = {
-  default: {
-    use(options?: {target?: Element | DocumentFragment}): void
-    unuse(): void
+declare type UseOptions = {
+  handler?(css: string): void
+}
+
+declare type StyleModule = Module & {
+  exports: {
+    default: {
+      use(options?: UseOptions): void
+      unuse(): void
+    }
   }
 }
 
@@ -41,29 +47,41 @@ export class IPyWidgetView extends LayoutDOMView {
     return []
   }
 
+  protected _ipy_stylesheets(): StyleSheetLike[] {
+    const stylesheets: StyleSheetLike[] = []
+
+    function handler(raw_css: string): void {
+      const css = raw_css.replace(/:root/g, ":host")
+      stylesheets.push(new InlineStyleSheet(css))
+    }
+
+    function is_StyleModule(module: Module): module is StyleModule {
+      const {exports} = module
+      return isObject(exports.default) && "use" in exports.default
+    }
+
+    const modules = values(__webpack_module_cache__)
+    const css_modules = modules.filter(({id, exports}) => id.endsWith(".css") && "default" in exports)
+    const style_modules = css_modules.filter(is_StyleModule)
+
+    for (const module of style_modules) {
+      const style = module.exports.default
+      try {
+        style.use({handler})
+      } catch {
+        console.error("failed to apply a stylesheet")
+      }
+    }
+
+    return stylesheets
+  }
+
+  override stylesheets(): StyleSheetLike[] {
+    return [...super.stylesheets(), ...this._ipy_stylesheets()]
+  }
+
   override render(): void {
     super.render()
-
-    const css_modules = values(__webpack_module_cache__).filter(({id}) => id.endsWith(".css"))
-    for (const module of css_modules) {
-      const css = (module.exports as CSSModule).default
-      if ("use" in css) {
-        try {
-          css.use({target: this.shadow_el})
-        } catch {
-          console.error("failed to apply a stylesheet")
-          continue
-        }
-      }
-    }
-
-    for (const el of this.shadow_el.children) {
-      if (el instanceof HTMLStyleElement) {
-        const fixed = el.textContent!.replace(/:root/g, ":host")
-        el.textContent = fixed
-      }
-    }
-
     this.container = div({style: "display: contents;"})
     this.shadow_el.append(this.container)
     this._render().then(() => {
