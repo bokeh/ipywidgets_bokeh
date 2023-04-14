@@ -1,11 +1,12 @@
-import {div} from "@bokehjs/core/dom"
+import {div, InlineStyleSheet, StyleSheetLike} from "@bokehjs/core/dom"
 import {LayoutDOM, LayoutDOMView} from "@bokehjs/models/layouts/layout_dom"
 import {UIElement} from "@bokehjs/models/ui/ui_element"
 import {Document} from "@bokehjs/document"
 import {MessageSentEvent} from "@bokehjs/document/events"
 import * as p from "@bokehjs/core/properties"
-import {isString} from "@bokehjs/core/util/types"
+import {isString, isObject} from "@bokehjs/core/util/types"
 import {assert} from "@bokehjs/core/util/assert"
+import {values} from "@bokehjs/core/util/object"
 
 import {generate_require_loader} from "./loader"
 import {WidgetManager, ModelBundle} from "./manager"
@@ -13,6 +14,27 @@ import {WidgetManager, ModelBundle} from "./manager"
 import {WidgetView} from "@jupyter-widgets/base"
 
 const widget_managers: WeakMap<Document, WidgetManager> = new WeakMap()
+
+declare type Module = {
+  id: string
+  loaded: boolean
+  exports: {[key: string]: unknown}
+}
+
+declare type UseOptions = {
+  handler?(css: string): void
+}
+
+declare type StyleModule = Module & {
+  exports: {
+    default: {
+      use(options?: UseOptions): void
+      unuse(): void
+    }
+  }
+}
+
+declare const __webpack_module_cache__: {[key: string]: Module}
 
 export class IPyWidgetView extends LayoutDOMView {
   container: HTMLDivElement
@@ -23,6 +45,39 @@ export class IPyWidgetView extends LayoutDOMView {
 
   get child_models(): UIElement[] {
     return []
+  }
+
+  protected _ipy_stylesheets(): StyleSheetLike[] {
+    const stylesheets: StyleSheetLike[] = []
+
+    function handler(raw_css: string): void {
+      const css = raw_css.replace(/:root/g, ":host")
+      stylesheets.push(new InlineStyleSheet(css))
+    }
+
+    function is_StyleModule(module: Module): module is StyleModule {
+      const {exports} = module
+      return isObject(exports.default) && "use" in exports.default
+    }
+
+    const modules = values(__webpack_module_cache__)
+    const css_modules = modules.filter(({id, exports}) => id.endsWith(".css") && "default" in exports)
+    const style_modules = css_modules.filter(is_StyleModule)
+
+    for (const module of style_modules) {
+      const style = module.exports.default
+      try {
+        style.use({handler})
+      } catch {
+        console.error("failed to apply a stylesheet")
+      }
+    }
+
+    return stylesheets
+  }
+
+  override stylesheets(): StyleSheetLike[] {
+    return [...super.stylesheets(), ...this._ipy_stylesheets()]
   }
 
   override render(): void {
