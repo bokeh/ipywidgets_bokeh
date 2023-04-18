@@ -14,6 +14,7 @@ build:
 
 extra:
   channels:
+    - bokeh/label/dev
     - bokeh
     - conda-forge
 
@@ -24,9 +25,9 @@ requirements:
     - nodejs 18.*
   run:
     - python >=3.9
-    - bokeh 3.*,>=3.2.0.dev1
+    - bokeh 3.* # TODO 3.2.dev1
     - ipywidgets 8.0.4
-    - ipykernel 6.*,!=6.18.0 # until ipywidgets 8.0.6
+    - ipykernel 6.*,!=6.18 # until ipywidgets 8.0.6
 
 test:
   imports:
