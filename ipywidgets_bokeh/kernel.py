@@ -10,8 +10,6 @@ import json
 import logging
 
 from distutils.version import LooseVersion
-from functools import partial
-from typing import Union
 
 import ipykernel
 import ipykernel.kernelbase
@@ -45,28 +43,15 @@ class SessionWebsocket(session.Session):
 
     parent: BokehKernel
 
-    def send(self, stream, msg_type, content=None, parent=None, ident=None, buffers=None, track=False, header=None, metadata=None):
-        if not isinstance(stream, WebsocketStream):
-            self.parent.log.warn(f"skipping {msg_type} ${content}")
-            return
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.document.on_message("ipywidgets_bokeh", self.receive)
 
-        msg = self.msg(msg_type, content=content, parent=parent, header=header, metadata=metadata)
-        msg['channel'] = stream.channel
-
-        doc = self.document
-
-        # Ensure document message handler is only added once
-        try:
-            doc.remove_on_message("ipywidgets_bokeh", self.receive)
-        except Exception:
-            pass
-        finally:
-            doc.on_message("ipywidgets_bokeh", self.receive)
-
+    def _encode_msg(self, msg: dict[str, Any], buffers: list[bytes]) -> bytes | str:
         packed = self.pack(msg)
 
-        data: Union[bytes, str]
-        if buffers is not None and len(buffers) != 0:
+        data: bytes | str
+        if buffers:
             buffers = [packed] + buffers
             nbufs = len(buffers)
 
@@ -82,23 +67,28 @@ class SessionWebsocket(session.Session):
             data = b"".join(items)
         else:
             data = packed.decode("utf-8")
-        event = MessageSentEvent(doc, "ipywidgets_bokeh", data)
+
+        return data
+
+    def send(self, stream, msg_type, content=None, parent=None, ident=None, buffers: list[bytes] | None = None, track=False, header=None, metadata=None):
+        msg = self.msg(msg_type, content=content, parent=parent, header=header, metadata=metadata)
+        msg["channel"] = getattr(stream, "channel", "shell")
+        data = self._encode_msg(msg, buffers or [])
+        event = MessageSentEvent(self.document, "ipywidgets_bokeh", data)
         self._trigger_change(event)
 
     def receive(self, data: str) -> None:
         msg = json.loads(data)
-        msg_serialized = self.serialize(msg)
         if msg['channel'] == 'shell':
-            stream = StreamWrapper(msg['channel'])
+            msg_serialized = self.serialize(msg)
             msg_list = [BytesWrap(k) for k in msg_serialized]
-            if kernel_version > '6':
-                cb = partial(self.parent.dispatch_shell, msg_list)
-                if self.document.session_context: # Bokeh Server
-                    self.document.add_next_tick_callback(cb)
-                else: # Other Tornado based server
-                    self.parent.io_loop.add_callback(cb)
-            else:
-                self.parent.dispatch_shell(stream, msg_list)
+            async def dispatch_shell():
+                parent = self.parent
+                await parent.dispatch_shell(msg_list)
+            if self.document.session_context: # Bokeh Server
+                self.document.add_next_tick_callback(dispatch_shell)
+            else: # Other Tornado based server
+                self.parent.io_loop.add_callback(dispatch_shell)
 
     @property
     def document(self):
@@ -131,7 +121,7 @@ class BokehKernel(ipykernel.kernelbase.Kernel):
 
         self.iopub_socket.channel = 'iopub'
         self.session.stream = self.iopub_socket
-        self.comm_manager = CommManager()
+        self.comm_manager = CommManager(parent=self, kernel=self)
         self.shell = None
         self.log = logging.getLogger("ipywidgets_bokeh")
 
