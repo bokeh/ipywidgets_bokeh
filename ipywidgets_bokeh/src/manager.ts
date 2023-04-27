@@ -128,7 +128,7 @@ export class WidgetManager extends HTMLManager {
     this.kernel = this.kernel_manager.connectTo({model: kernel_model, handleComms: true})
     this.kernel.registerCommTarget(this.comm_target_name, (comm, msg) => {
       const model = this._model_objs.get(msg.content.comm_id)
-      if (model != null) {
+      if (model != null && !model.comm_live) {
         const comm_wrapper = new shims.services.Comm(comm)
         this._attach_comm(comm_wrapper, model)
       }
@@ -158,7 +158,12 @@ export class WidgetManager extends HTMLManager {
       for (const model of models) {
         if (this._model_objs.has(model.model_id))
           continue
+        const comm = await this._create_comm(this.comm_target_name, model.model_id)
+        this._attach_comm(comm, model)
         this._model_objs.set(model.model_id, model)
+        model.once("comm:close", () => {
+          this._model_objs.delete(model.model_id)
+        })
       }
 
       const model = models.find((item) => item.model_id == spec.model_id)
