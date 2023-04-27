@@ -158,12 +158,7 @@ export class WidgetManager extends HTMLManager {
       for (const model of models) {
         if (this._model_objs.has(model.model_id))
           continue
-        const comm = await this._create_comm(this.comm_target_name, model.model_id)
-        this._attach_comm(comm, model)
         this._model_objs.set(model.model_id, model)
-        model.once("comm:close", () => {
-          this._model_objs.delete(model.model_id)
-        })
       }
 
       const model = models.find((item) => item.model_id == spec.model_id)
