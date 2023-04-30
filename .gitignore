@@ -1,9 +1,7 @@
-# Python
 *.egg-info/
 __pycache__/
 .ipynb_checkpoints/
-
-# [Java|Type]Script
+build/
 dist/
 node_modules/
 bokeh*.tgz

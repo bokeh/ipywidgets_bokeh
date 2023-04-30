@@ -17,7 +17,8 @@ cd ..
 
 git clean -dfx
 python setup.py build_js sdist
-twine upload -u __tokeh__ -p $PYPI_TOKEN_IPYWIDGETS_BOKEH dist/ipywidgets_bokeh-x.y.z.tar.gz
+PYPI_DIST=dist/ipywidgets_bokeh-x.y.z
+twine upload -u __tokeh__ -p $PYPI_TOKEN_IPYWIDGETS_BOKEH $PYPI_DIST.tar.gz $PYPI_DIST-py3-none-any.whl
 
 git clean -dfx
 conda build conda.recipe
