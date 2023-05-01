@@ -166,7 +166,7 @@ export class WidgetManager extends HTMLManager {
         })
       }
 
-      const model = models.find((item) => item.model_id == spec.model_id)
+      const model = models.find((item) => item.model_id === spec.model_id)
       if (model == null) {
         return null
       }

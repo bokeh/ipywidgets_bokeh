@@ -15,13 +15,13 @@ function get_cdn_url(moduleName: string, moduleVersion: string, cdn: string) {
   // if a '/' is present, like 'foo/bar', packageName is changed to 'foo', and path to 'bar'
   // We first find the first '/'
   let index = moduleName.indexOf("/")
-  if ((index != -1) && (moduleName[0] == "@")) {
+  if ((index !== -1) && (moduleName[0] === "@")) {
     // if we have a namespace, it's a different story
     // @foo/bar/baz should translate to @foo/bar and baz
     // so we find the 2nd '/'
     index = moduleName.indexOf("/", index+1)
   }
-  if (index != -1) {
+  if (index !== -1) {
     fileName = moduleName.substr(index+1)
     packageName = moduleName.substr(0, index)
   }
