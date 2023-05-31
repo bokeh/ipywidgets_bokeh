@@ -29,11 +29,18 @@ install_requires = [
     "ipywidgets ==8.*",
     "ipykernel ==6.*,!=6.18.0", # until ipywidgets 8.0.6
 ]
+dev_dependencies = [
+    "anywidget>=0.3.0",
+    "pytest>=7.3.1",
+    "pytest-cov>=4.1.0",
+    "pytest-playwright>=0.3.3",
+]
 
 setup_args = dict(
     name="ipywidgets_bokeh",
     version="1.4.0.dev3",
     install_requires=install_requires,
+    extras_require={"dev": dev_dependencies},
     python_requires=">=3.9",
     description="Allows embedding of Jupyter widgets in Bokeh layouts.",
     long_description=open("README.md").read(),
