@@ -26,6 +26,7 @@ jobs:
         uses: conda-incubator/setup-miniconda@v2
         with:
           auto-update-conda: true
+          activate-environment: test
 
       - name: Checkout the repository
         uses: actions/checkout@v3
@@ -64,7 +65,8 @@ jobs:
       - name: Install dev Python dependencies & Playwright browsers
         if: success() || failure()
         run: |
-          python -m pip install --upgrade pip
+          conda install --channel conda-forge -y pip python
+          conda info
           python -m pip install --editable .[dev]
           python -m playwright install --with-deps
 
