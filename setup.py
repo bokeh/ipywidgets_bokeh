@@ -31,6 +31,7 @@ install_requires = [
 ]
 dev_dependencies = [
     "anywidget>=0.3.0",
+    "panel>=1.0.4",
     "pytest>=7.3.1",
     "pytest-cov>=4.1.0",
     "pytest-playwright>=0.3.3",
