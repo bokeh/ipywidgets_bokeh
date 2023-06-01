@@ -17,7 +17,16 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
         node-version: [18.x]
 
+    defaults:
+      run:
+        shell: bash -el {0}
+
     steps:
+      - name: Set up conda and install base
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          auto-update-conda: true
+
       - name: Checkout the repository
         uses: actions/checkout@v3
 
@@ -27,39 +36,33 @@ jobs:
           node-version: ${{ matrix.node-version }}
 
       - name: Upgrade npm
-        shell: bash
         run: |
           npm install --location=global npm
 
       - name: Install JavaScript dependencies
         working-directory: ./ipywidgets_bokeh
-        shell: bash
         run: |
           npm ci --no-progress
 
       - name: Build ipywidgets-bokeh JavaScript
         working-directory: ./ipywidgets_bokeh
-        shell: bash
         run: |
           npm run build
 
       - name: Run JavaScript tests
         if: success() || failure()
         working-directory: ./ipywidgets_bokeh
-        shell: bash
         run: |
           npm run test
 
       - name: Lint the JavaScript codebase
         if: success() || failure()
         working-directory: ./ipywidgets_bokeh
-        shell: bash
         run: |
           npm run lint
 
-      - name: Install dev Python dependencies
+      - name: Install dev Python dependencies & Playwright browsers
         if: success() || failure()
-        shell: bash
         run: |
           python -m pip install --upgrade pip
           python -m pip install --editable .[dev]
@@ -67,13 +70,11 @@ jobs:
 
       - name: Run Playwright & Python tests
         if: success() || failure()
-        shell: bash
         run: |
           pytest
 
       - name: Check repository status
         if: success() || failure()
-        shell: bash
         run: |
           OUTPUT=$(git status --short .)
           if [[ ! -z "$OUTPUT" ]]; then echo $OUTPUT; exit 1; fi
