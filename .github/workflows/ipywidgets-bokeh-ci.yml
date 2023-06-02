@@ -71,7 +71,7 @@ jobs:
           python -m playwright install --with-deps
 
       - name: Run Playwright & Python tests
-        if: matrix.os != windows-latest
+        if: matrix.os != "windows-latest"
         run: |
           pytest
 
