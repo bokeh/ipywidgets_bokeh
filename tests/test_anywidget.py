@@ -1,10 +1,15 @@
+import sys
 import time
 
 import anywidget
 import panel as pn
+import pytest
 import traitlets
 from panel.io.server import serve
 from playwright.sync_api import expect, Page
+
+if sys.platfrom.startswith("win"):
+    pytest.skip(reason="Skipping E2E tests on Windows.", allow_module_level=True)
 
 
 class CounterWidget(anywidget.AnyWidget):
