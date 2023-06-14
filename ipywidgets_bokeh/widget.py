@@ -37,5 +37,5 @@ class IPyWidget(LayoutDOM):
         spec = widget.get_view_spec()
         state = Widget.get_manager_state(widgets=[widget])
         state["full_state"] = state["state"]
-        state["state"] = embed.dependency_state([widget], drop_defaults=True)
+        state["state"] = embed.dependency_state([widget], drop_defaults=False)
         self.bundle = dict(spec=spec, state=state)
