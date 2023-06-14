@@ -155,6 +155,7 @@ export class WidgetManager extends HTMLManager {
 
     try {
       const models = await this.set_state(state)
+      await this.set_state({...state, state: state.full_state as any})
       for (const model of models) {
         if (this._model_objs.has(model.model_id))
           continue
