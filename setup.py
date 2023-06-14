@@ -39,7 +39,7 @@ dev_dependencies = [
 
 setup_args = dict(
     name="ipywidgets_bokeh",
-    version="1.4.0",
+    version="1.5.0",
     install_requires=install_requires,
     extras_require={"dev": dev_dependencies},
     python_requires=">=3.9",
