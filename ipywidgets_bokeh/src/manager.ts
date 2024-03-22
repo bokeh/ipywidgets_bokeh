@@ -194,12 +194,12 @@ export class WidgetManager extends HTMLManager {
     const comm = (() => {
       const key = target_name + model_id
       let comm = this._comms.get(key)
-      if (!comm) {
+      if (comm == null) {
         if (this.kernel.hasComm(model_id)) {
 	  comm = (this.kernel as any)._comms.get(model_id)
-	} else {
+        } else {
           comm = this.kernel.createComm(target_name, model_id)
-	}
+        }
         this._comms.set(key, comm)
       }
       return comm
