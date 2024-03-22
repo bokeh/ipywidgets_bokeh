@@ -136,8 +136,7 @@ export class WidgetManager extends HTMLManager {
             this._attach_comm(comm_wrapper, model)
 	  }
         })
-      }
-      if (model != null && !model.comm_live) {
+      } else {
         this._attach_comm(comm_wrapper, model)
       }
       this._model_objs.delete(msg.content.comm_id)
