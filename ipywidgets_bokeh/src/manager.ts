@@ -3,7 +3,7 @@ import * as outputWidgets from "@jupyter-widgets/output"
 import * as controls from "@jupyter-widgets/controls"
 
 import {HTMLManager} from "@jupyter-widgets/html-manager"
-import {WidgetModel, WidgetView, IModelOptions, IClassicComm, shims} from "@jupyter-widgets/base"
+import {WidgetModel, WidgetView, IModelOptions, shims} from "@jupyter-widgets/base"
 import {IState, IManagerState} from "@jupyter-widgets/base-manager"
 
 import {Kernel, KernelManager, ServerConnection} from "@jupyterlab/services"
@@ -190,14 +190,18 @@ export class WidgetManager extends HTMLManager {
   }
 
   override async _create_comm(target_name: string, model_id: string, data?: any, metadata?: any,
-      buffers?: ArrayBuffer[] | ArrayBufferView[]): Promise<IClassicComm> {
+      buffers?: ArrayBuffer[] | ArrayBufferView[]): Promise<shims.services.Comm> {
     const comm = (() => {
       const key = target_name + model_id
-      const comm = this._comms.get(key)
-      if (comm != null)
+      let comm = this._comms.get(key)
+      if (comm != null) {
         return comm
-      else {
-        const comm = this.kernel.createComm(target_name, model_id)
+      } else {
+	if (this.kernel.hasComm(model_id) {
+	  comm = (this.kernel as any)._comms.get(model_id)
+	} else {
+          comm = this.kernel.createComm(target_name, model_id)
+	}
         this._comms.set(key, comm)
         return comm
       }
