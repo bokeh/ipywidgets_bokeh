@@ -8,6 +8,7 @@ import {IState, IManagerState} from "@jupyter-widgets/base-manager"
 
 import {Kernel, KernelManager, ServerConnection} from "@jupyterlab/services"
 
+import {assert} from "@bokehjs/core/util/assert"
 import {isString} from "@bokehjs/core/util/types"
 import {keys, entries, to_object} from "@bokehjs/core/util/object"
 
@@ -64,6 +65,12 @@ export type ModelBundle = {
 }
 
 let _kernel_id = 0
+
+type KernelConnection = Kernel.IKernelConnection & {
+  // This is probably a private member of IKernelConnection, but there's
+  // no public API to retrieve a Comm, only to check if one exists.
+  _comms: Map<string, Kernel.IComm>
+}
 
 export class WidgetManager extends HTMLManager {
 
@@ -192,14 +199,15 @@ export class WidgetManager extends HTMLManager {
   override async _create_comm(target_name: string, model_id: string, data?: any, metadata?: any,
       buffers?: ArrayBuffer[] | ArrayBufferView[]): Promise<shims.services.Comm> {
     const comm = (() => {
-      const key = target_name + model_id
+      const key = `${target_name}${model_id}`
       let comm = this._comms.get(key)
-      if (comm == null) {
+      if (comm === undefined) {
         if (this.kernel.hasComm(model_id)) {
-	  comm = (this.kernel as any)._comms.get(model_id)
+          comm = (this.kernel as KernelConnection)._comms.get(model_id)
         } else {
           comm = this.kernel.createComm(target_name, model_id)
         }
+        assert(comm != null)
         this._comms.set(key, comm)
       }
       return comm
