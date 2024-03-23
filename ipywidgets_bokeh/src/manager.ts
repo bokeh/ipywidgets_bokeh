@@ -138,10 +138,10 @@ export class WidgetManager extends HTMLManager {
       const comm_wrapper = new shims.services.Comm(comm)
       if (model == null) {
         this.handle_comm_open(comm_wrapper, msg).then((model) => {
-	  if (model != null && !model.comm_live) {
+          if (!model.comm_live) {
             const comm_wrapper = new shims.services.Comm(comm)
             this._attach_comm(comm_wrapper, model)
-	  }
+          }
         })
       } else {
         this._attach_comm(comm_wrapper, model)
