@@ -3,10 +3,12 @@ import * as outputWidgets from "@jupyter-widgets/output"
 import * as controls from "@jupyter-widgets/controls"
 
 import {HTMLManager} from "@jupyter-widgets/html-manager"
-import {WidgetModel, WidgetView, IModelOptions, shims} from "@jupyter-widgets/base"
-import {IState, IManagerState} from "@jupyter-widgets/base-manager"
+import type {WidgetModel, WidgetView, IModelOptions} from "@jupyter-widgets/base"
+import {shims} from "@jupyter-widgets/base"
+import type {IState, IManagerState} from "@jupyter-widgets/base-manager"
 
-import {Kernel, KernelManager, ServerConnection} from "@jupyterlab/services"
+import type {Kernel, ServerConnection} from "@jupyterlab/services"
+import {KernelManager} from "@jupyterlab/services"
 
 import {assert} from "@bokehjs/core/util/assert"
 import {isString} from "@bokehjs/core/util/types"
@@ -137,7 +139,7 @@ export class WidgetManager extends HTMLManager {
       const model = this._model_objs.get(msg.content.comm_id)
       const comm_wrapper = new shims.services.Comm(comm)
       if (model == null) {
-        this.handle_comm_open(comm_wrapper, msg).then((model) => {
+        void this.handle_comm_open(comm_wrapper, msg).then((model) => {
           if (!model.comm_live) {
             const comm_wrapper = new shims.services.Comm(comm)
             this._attach_comm(comm_wrapper, model)
@@ -171,8 +173,9 @@ export class WidgetManager extends HTMLManager {
       const models = await this.set_state(state)
       await this.set_state({...state, state: state.full_state as any})
       for (const model of models) {
-        if (this._model_objs.has(model.model_id))
+        if (this._model_objs.has(model.model_id)) {
           continue
+        }
         const comm = await this._create_comm(this.comm_target_name, model.model_id)
         this._attach_comm(comm, model)
         this._model_objs.set(model.model_id, model)
@@ -232,8 +235,9 @@ export class WidgetManager extends HTMLManager {
       if (model_id != null && models.has(model_id)) {
         const model = models.get(model_id)!
         serialized_state = model.state
-      } else
+      } else {
         throw new Error("internal error in new_model()")
+      }
     }
     return super.new_model(options, serialized_state)
   }
