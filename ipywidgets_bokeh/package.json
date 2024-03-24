@@ -35,7 +35,7 @@
     "clean": "rimraf dist",
     "prepack": "npm run clean && npm run build",
     "test": "echo 'TODO'",
-    "lint": "eslint -c eslint.json src/**/*.ts"
+    "lint": "eslint src/**"
   },
   "files": [
     "dist/lib/**/*.{js,js.map,d.ts}",
