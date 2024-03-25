@@ -3,11 +3,14 @@ import * as outputWidgets from "@jupyter-widgets/output"
 import * as controls from "@jupyter-widgets/controls"
 
 import {HTMLManager} from "@jupyter-widgets/html-manager"
-import {WidgetModel, WidgetView, IModelOptions, IClassicComm, shims} from "@jupyter-widgets/base"
-import {IState, IManagerState} from "@jupyter-widgets/base-manager"
+import type {WidgetModel, WidgetView, IModelOptions} from "@jupyter-widgets/base"
+import {shims} from "@jupyter-widgets/base"
+import type {IState, IManagerState} from "@jupyter-widgets/base-manager"
 
-import {Kernel, KernelManager, ServerConnection} from "@jupyterlab/services"
+import type {Kernel, ServerConnection} from "@jupyterlab/services"
+import {KernelManager} from "@jupyterlab/services"
 
+import {assert} from "@bokehjs/core/util/assert"
 import {isString} from "@bokehjs/core/util/types"
 import {keys, entries, to_object} from "@bokehjs/core/util/object"
 
@@ -64,6 +67,12 @@ export type ModelBundle = {
 }
 
 let _kernel_id = 0
+
+type KernelConnection = Kernel.IKernelConnection & {
+  // This is probably a private member of IKernelConnection, but there's
+  // no public API to retrieve a Comm, only to check if one exists.
+  _comms: Map<string, Kernel.IComm>
+}
 
 export class WidgetManager extends HTMLManager {
 
@@ -130,14 +139,13 @@ export class WidgetManager extends HTMLManager {
       const model = this._model_objs.get(msg.content.comm_id)
       const comm_wrapper = new shims.services.Comm(comm)
       if (model == null) {
-        this.handle_comm_open(comm_wrapper, msg).then((model) => {
-	  if (model != null && !model.comm_live) {
+        void this.handle_comm_open(comm_wrapper, msg).then((model) => {
+          if (!model.comm_live) {
             const comm_wrapper = new shims.services.Comm(comm)
             this._attach_comm(comm_wrapper, model)
-	  }
+          }
         })
-      }
-      if (model != null && !model.comm_live) {
+      } else {
         this._attach_comm(comm_wrapper, model)
       }
       this._model_objs.delete(msg.content.comm_id)
@@ -165,8 +173,9 @@ export class WidgetManager extends HTMLManager {
       const models = await this.set_state(state)
       await this.set_state({...state, state: state.full_state as any})
       for (const model of models) {
-        if (this._model_objs.has(model.model_id))
+        if (this._model_objs.has(model.model_id)) {
           continue
+        }
         const comm = await this._create_comm(this.comm_target_name, model.model_id)
         this._attach_comm(comm, model)
         this._model_objs.set(model.model_id, model)
@@ -191,17 +200,20 @@ export class WidgetManager extends HTMLManager {
   }
 
   override async _create_comm(target_name: string, model_id: string, data?: any, metadata?: any,
-      buffers?: ArrayBuffer[] | ArrayBufferView[]): Promise<IClassicComm> {
+      buffers?: ArrayBuffer[] | ArrayBufferView[]): Promise<shims.services.Comm> {
     const comm = (() => {
-      const key = target_name + model_id
-      const comm = this._comms.get(key)
-      if (comm != null)
-        return comm
-      else {
-        const comm = this.kernel.createComm(target_name, model_id)
+      const key = `${target_name}${model_id}`
+      let comm = this._comms.get(key)
+      if (comm === undefined) {
+        if (this.kernel.hasComm(model_id)) {
+          comm = (this.kernel as KernelConnection)._comms.get(model_id)
+        } else {
+          comm = this.kernel.createComm(target_name, model_id)
+        }
+        assert(comm != null)
         this._comms.set(key, comm)
-        return comm
       }
+      return comm
     })()
     comm.open(data, metadata, buffers)
     return new shims.services.Comm(comm)
@@ -223,8 +235,9 @@ export class WidgetManager extends HTMLManager {
       if (model_id != null && models.has(model_id)) {
         const model = models.get(model_id)!
         serialized_state = model.state
-      } else
+      } else {
         throw new Error("internal error in new_model()")
+      }
     }
     return super.new_model(options, serialized_state)
   }
