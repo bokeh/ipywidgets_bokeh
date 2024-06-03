@@ -65,7 +65,7 @@ export class IPyWidgetView extends LayoutDOMView {
 
   override render(): void {
     super.render()
-    this.container = div({style: "display: contents;"}) // ipywidgets' APIs require HTMLElement, not DocumentFragment
+    this.container = div({style: {display: "contents"}}) // ipywidgets' APIs require HTMLElement, not DocumentFragment
     this.shadow_el.append(this.container)
     void this._render().then(() => {
       this.invalidate_layout() // TODO: this may be overzealous; probably should be removed
