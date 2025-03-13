@@ -107,7 +107,7 @@ class ShellStream:
 
 class BokehKernel(ipykernel.kernelbase.Kernel):
     implementation = 'ipython'
-    implementation_version = '1.5.0'
+    implementation_version = '1.6.0'
     banner = 'banner'
 
     shell_stream = Any(ShellStream(), allow_none=True)

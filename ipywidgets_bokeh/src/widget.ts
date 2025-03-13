@@ -1,16 +1,18 @@
-import {div, InlineStyleSheet, StyleSheetLike} from "@bokehjs/core/dom"
+import type {StyleSheetLike} from "@bokehjs/core/dom"
+import {div, InlineStyleSheet} from "@bokehjs/core/dom"
 import {LayoutDOM, LayoutDOMView} from "@bokehjs/models/layouts/layout_dom"
-import {UIElement} from "@bokehjs/models/ui/ui_element"
-import {Document} from "@bokehjs/document"
+import type {UIElement} from "@bokehjs/models/ui/ui_element"
+import type {Document} from "@bokehjs/document"
 import {MessageSentEvent} from "@bokehjs/document/events"
-import * as p from "@bokehjs/core/properties"
+import type * as p from "@bokehjs/core/properties"
 import {isString} from "@bokehjs/core/util/types"
 import {assert} from "@bokehjs/core/util/assert"
 
 import {generate_require_loader} from "./loader"
-import {WidgetManager, ModelBundle} from "./manager"
+import type {ModelBundle} from "./manager"
+import {WidgetManager} from "./manager"
 
-import {WidgetView} from "@jupyter-widgets/base"
+import type {WidgetView} from "@jupyter-widgets/base"
 
 const widget_managers: WeakMap<Document, WidgetManager> = new WeakMap()
 
@@ -65,7 +67,7 @@ export class IPyWidgetView extends LayoutDOMView {
     super.render()
     this.container = div({style: "display: contents;"}) // ipywidgets' APIs require HTMLElement, not DocumentFragment
     this.shadow_el.append(this.container)
-    this._render().then(() => {
+    void this._render().then(() => {
       this.invalidate_layout() // TODO: this may be overzealous; probably should be removed
       this.rendered = true
       this.notify_finished()

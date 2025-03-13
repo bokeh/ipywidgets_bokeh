@@ -2,4 +2,4 @@ include README.md
 include LICENSE.txt
 include ipywidgets_bokeh/bokeh.ext.json
 include ipywidgets_bokeh/package.json
-recursive-include ipywidgets_bokeh/dist *.js *.js.map *.d.ts *.json
+recursive-include ipywidgets_bokeh/dist *
