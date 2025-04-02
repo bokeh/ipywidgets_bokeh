@@ -9,8 +9,6 @@ from __future__ import annotations
 import json
 import logging
 
-from distutils.version import LooseVersion
-
 import ipykernel
 import ipykernel.kernelbase
 import jupyter_client.session as session
@@ -19,8 +17,6 @@ from bokeh.document.events import MessageSentEvent
 from ipykernel.comm import CommManager
 from tornado.ioloop import IOLoop
 from traitlets import Any
-
-kernel_version = LooseVersion(ipykernel.__version__)
 
 SESSION_KEY = b'ipywidgets_bokeh'
 
