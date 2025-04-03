@@ -70,10 +70,9 @@ jobs:
           conda install -y pip python=${{ matrix.python-version }}
           conda info
           python -m pip install --editable .[dev]
-          python -m playwright install --with-deps
+          python -m playwright install chromium
 
       - name: Run Playwright & Python tests
-        if: matrix.os != 'windows-latest'
         run: |
           pytest
 
