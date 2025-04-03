@@ -1,10 +1,8 @@
-import time
-
 import anywidget
 import panel as pn
 import traitlets
-from panel.io.server import serve
-from playwright.sync_api import expect, Page
+from panel.tests.util import serve_and_wait
+from playwright.sync_api import Page, expect
 
 
 class CounterWidget(anywidget.AnyWidget):
@@ -33,7 +31,7 @@ class CounterWidget(anywidget.AnyWidget):
     count = traitlets.Int(default_value=0).tag(sync=True)
 
 
-def test_anywidget(page: Page) -> None:
+def test_anywidget(page: Page, asyncio_loop) -> None:
     """Test anywidget button counter example."""
     # Port to run the panel server on.
     port = 5006
@@ -44,8 +42,7 @@ def test_anywidget(page: Page) -> None:
 
     # Serve the button using panel, the time delay is necessary for panel to start and
     # serve the widget.
-    serve(panels=panels, port=port, show=False)
-    time.sleep(0.2)
+    serve_and_wait(panels, port=port)
 
     # Go to the page and locate the widget using playwright.
     page.goto(f"http://localhost:{port}")
