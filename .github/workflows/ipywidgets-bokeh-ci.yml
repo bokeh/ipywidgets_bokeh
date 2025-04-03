@@ -15,7 +15,8 @@ jobs:
       max-parallel: 3
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        node-version: [18.x]
+        node-version: [20.x]
+        python-version: ["3.12"]
 
     defaults:
       run:
@@ -23,16 +24,18 @@ jobs:
 
     steps:
       - name: Set up conda and install base
-        uses: conda-incubator/setup-miniconda@v2
+        uses: conda-incubator/setup-miniconda@v3
         with:
           auto-update-conda: true
           activate-environment: test
+          channels: conda-forge
+          python-version: ${{ matrix.python-version }}
 
       - name: Checkout the repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
 
@@ -65,13 +68,11 @@ jobs:
       - name: Install dev Python dependencies & Playwright browsers
         if: success() || failure()
         run: |
-          conda install --channel conda-forge -y pip python
           conda info
           python -m pip install --editable .[dev]
-          python -m playwright install --with-deps
+          python -m playwright install chromium
 
       - name: Run Playwright & Python tests
-        if: matrix.os != 'windows-latest'
         run: |
           pytest
 
