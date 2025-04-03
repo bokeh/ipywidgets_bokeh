@@ -190,7 +190,7 @@ export class WidgetManager extends HTMLManager {
       }
 
       const view = await this.create_view(model, {el})
-      view.on('displayed', onDisplay)
+      view.on("displayed", onDisplay)
       await this.display_view(view, el)
       return view
     } finally {
