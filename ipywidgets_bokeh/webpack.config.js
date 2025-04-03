@@ -34,7 +34,7 @@ module.exports = (env={}, argv={}) => {
       }
     ],
     module: {rules},
-    devtool: minimize ? false : "source-map",
+    devtool: mode === "development" ? 'inline-source-map' : false,
     mode,
     optimization: {minimize},
   }
