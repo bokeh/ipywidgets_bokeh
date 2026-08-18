@@ -1,4 +1,5 @@
 const path = require("path");
+const TerserPlugin = require("terser-webpack-plugin");
 const version = require('./package.json').version;
 
 const rules = [
@@ -36,6 +37,10 @@ module.exports = (env={}, argv={}) => {
     module: {rules},
     devtool: mode === "development" ? 'inline-source-map' : false,
     mode,
-    optimization: {minimize},
+    optimization: {
+      minimize,
+      // bokeh resolves models by their (unmangled) class name, so it must survive minification
+      minimizer: [new TerserPlugin({terserOptions: {keep_classnames: true, keep_fnames: true}})],
+    },
   }
 }
