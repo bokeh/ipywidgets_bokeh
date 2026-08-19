@@ -116,7 +116,7 @@ export class IPyWidget extends LayoutDOM {
     super(attrs)
   }
 
-  static override __name__ = "IPyWidget"
+  static __name__ = "IPyWidget"
   static override __module__ = "ipywidgets_bokeh.widget"
 
   static {
