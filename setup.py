@@ -25,9 +25,9 @@ class BuildJS(Command):
             os.chdir("..")
 
 install_requires = [
-    "bokeh >=3.*", # TODO 3.2.dev1
+    "bokeh >=3.4",
     "ipywidgets ==8.*",
-    "ipykernel >=6.*,!=6.18.0", # until ipywidgets 8.0.6
+    "ipykernel >=6.*,!=6.18.0",
 ]
 dev_dependencies = [
     "anywidget>=0.3.0",
