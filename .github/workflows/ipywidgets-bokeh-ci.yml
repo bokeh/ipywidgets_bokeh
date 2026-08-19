@@ -34,6 +34,10 @@ jobs:
       - name: Checkout the repository
         uses: actions/checkout@v4
 
+      - name: Check release version consistency
+        run: |
+          python scripts/release.py check
+
       - name: Install node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
@@ -80,4 +84,4 @@ jobs:
         if: success() || failure()
         run: |
           OUTPUT=$(git status --short .)
-          if [[ ! -z "$OUTPUT" ]]; then echo $OUTPUT; exit 1; fi
+          if [[ -n "$OUTPUT" ]]; then echo "$OUTPUT"; exit 1; fi

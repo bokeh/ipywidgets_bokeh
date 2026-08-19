@@ -6,7 +6,7 @@ from setuptools import setup, find_packages, Command
 
 class BuildJS(Command):
 
-    description = "runs 'npm install && npm run prepack'"
+    description = "runs 'npm ci && npm run prepack'"
     user_options = []
 
     def initialize_options(self):
@@ -19,7 +19,7 @@ class BuildJS(Command):
         npm = "npm" if sys.platform != "win32" else "npm.bat"
         os.chdir("ipywidgets_bokeh")
         try:
-            self.spawn([npm, "install"])
+            self.spawn([npm, "ci"])
             self.spawn([npm, "run", "prepack"])
         finally:
             os.chdir("..")

@@ -3,8 +3,10 @@
 set -e
 set -x
 
+python scripts/release.py check
+
 cd ipywidgets_bokeh/
-npm install
+npm ci
 npm run build
 cd ..
 

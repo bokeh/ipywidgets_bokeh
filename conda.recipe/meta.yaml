@@ -22,7 +22,7 @@ requirements:
   build:
     - python >=3.9
     - setuptools
-    - nodejs 18.*
+    - nodejs 20.*
   run:
     - python >=3.9
     - bokeh 3.* # TODO 3.2.dev1
