@@ -14,6 +14,8 @@ import {assert} from "@bokehjs/core/util/assert"
 import {isString} from "@bokehjs/core/util/types"
 import {keys, entries, to_object} from "@bokehjs/core/util/object"
 
+declare const require: (id: string) => unknown
+
 abstract class CommsWebSocket implements WebSocket {
   binaryType: BinaryType
 
@@ -252,6 +254,16 @@ export class WidgetManager extends HTMLManager {
       if (moduleName === "@jupyter-widgets/base") {
         resolve(base)
       } else if (moduleName === "@jupyter-widgets/controls") {
+        // @jupyter-widgets/html-manager's own loadClass() (which we otherwise
+        // bypass entirely) pulls these in as a side effect of loading
+        // controls; third-party widget CSS (e.g. jupyter-leaflet's) assumes
+        // the --jp-* variables these define are present, and silently
+        // degrades (transparent backgrounds, no borders) when they aren't -
+        // which is always, outside of an actual JupyterLab page.
+        require("@jupyter-widgets/controls/css/widgets-base.css")
+        if (getComputedStyle(document.documentElement).getPropertyValue("--jp-layout-color0") === "") {
+          require("@jupyter-widgets/controls/css/labvariables.css")
+        }
         resolve(controls)
       } else if (moduleName === "@jupyter-widgets/output") {
         resolve(outputWidgets)
