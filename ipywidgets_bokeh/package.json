@@ -14,7 +14,7 @@
     "url": "https://github.com/bokeh/ipywidgets_bokeh.git"
   },
   "dependencies": {
-    "@bokeh/bokehjs": "3.10.0-rc.2",
+    "@bokeh/bokehjs": "3.10.0",
     "@jupyter-widgets/html-manager": "~1.0.5"
   },
   "devDependencies": {
