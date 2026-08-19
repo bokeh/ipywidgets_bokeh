@@ -1,0 +1,266 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "[0-9]+.[0-9]+.[0-9]+*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build and verify release artifacts
+    runs-on: ubuntu-latest
+    outputs:
+      prerelease: ${{ steps.version.outputs.prerelease }}
+
+    defaults:
+      run:
+        shell: bash -el {0}
+
+    steps:
+      - name: Checkout the tagged source
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up release build environment
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          activate-environment: release-build
+          channels: conda-forge
+          conda-build-version: "*"
+          miniforge-version: latest
+          python-version: "3.13"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          package-manager-cache: false
+
+      - name: Validate tag and version metadata
+        id: version
+        run: |
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+          python scripts/release.py check --tag "$GITHUB_REF_NAME"
+          echo "prerelease=$(python scripts/release.py show prerelease)" >> "$GITHUB_OUTPUT"
+
+      - name: Install release build tools
+        run: |
+          python -m pip install --disable-pip-version-check build twine
+
+      - name: Build JavaScript and npm package
+        working-directory: ipywidgets_bokeh
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+          mkdir -p ../release-artifacts/npm
+          npm pack --ignore-scripts --pack-destination ../release-artifacts/npm
+
+      - name: Build Python distributions
+        run: |
+          python -m build --outdir release-artifacts/python
+          python -m twine check release-artifacts/python/*
+
+      - name: Build and test conda package
+        run: |
+          conda build conda.recipe \
+            --no-anaconda-upload \
+            --output-folder release-artifacts/conda
+
+      - name: Verify release artifacts
+        run: |
+          python scripts/release.py verify-artifacts release-artifacts \
+            --checksums release-artifacts/SHA256SUMS
+
+      - name: Upload Python distributions
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-distributions
+          path: release-artifacts/python/*
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload npm package
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-package
+          path: release-artifacts/npm/*.tgz
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload conda package
+        uses: actions/upload-artifact@v4
+        with:
+          name: conda-package
+          path: |
+            release-artifacts/conda/**/*.conda
+            release-artifacts/conda/**/*.tar.bz2
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload checksums
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-checksums
+          path: release-artifacts/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 30
+
+  publish-pypi:
+    name: Publish to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Download Python distributions
+        uses: actions/download-artifact@v4
+        with:
+          name: python-distributions
+          path: dist
+
+      - name: Publish Python distributions
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist
+
+  publish-npm:
+    name: Publish to npm
+    needs: build
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Set up Node.js for trusted publishing
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          package-manager-cache: false
+          registry-url: https://registry.npmjs.org
+
+      - name: Download npm package
+        uses: actions/download-artifact@v4
+        with:
+          name: npm-package
+          path: dist
+
+      - name: Publish npm package
+        env:
+          PRERELEASE: ${{ needs.build.outputs.prerelease }}
+        run: |
+          args=(--access public)
+          if [[ "$PRERELEASE" == "true" ]]; then
+            args+=(--tag next)
+          fi
+          npm publish dist/*.tgz "${args[@]}"
+
+  publish-conda:
+    name: Publish to Anaconda.org
+    needs: build
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: read
+
+    defaults:
+      run:
+        shell: bash -el {0}
+
+    steps:
+      - name: Set up Anaconda client
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          activate-environment: release-publish
+          channels: conda-forge
+          miniforge-version: latest
+          python-version: "3.13"
+
+      - name: Install Anaconda client
+        run: conda install --yes anaconda-client
+
+      - name: Download conda package
+        uses: actions/download-artifact@v4
+        with:
+          name: conda-package
+          path: dist
+
+      - name: Publish conda package
+        env:
+          ANACONDA_API_TOKEN: ${{ secrets.ANACONDA_API_TOKEN }}
+          PRERELEASE: ${{ needs.build.outputs.prerelease }}
+        run: |
+          if [[ -z "$ANACONDA_API_TOKEN" ]]; then
+            echo "ANACONDA_API_TOKEN is not configured in the release environment" >&2
+            exit 1
+          fi
+          mapfile -t packages < <(find dist -type f \( -name '*.conda' -o -name '*.tar.bz2' \))
+          if [[ ${#packages[@]} -ne 1 ]]; then
+            echo "expected one conda package, found ${#packages[@]}" >&2
+            exit 1
+          fi
+          labels=(--label dev)
+          if [[ "$PRERELEASE" != "true" ]]; then
+            labels+=(--label main)
+          fi
+          anaconda --token "$ANACONDA_API_TOKEN" upload \
+            --user bokeh \
+            "${labels[@]}" \
+            "${packages[0]}"
+
+  github-release:
+    name: Create GitHub Release
+    needs: [build, publish-pypi, publish-npm, publish-conda]
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download Python distributions
+        uses: actions/download-artifact@v4
+        with:
+          name: python-distributions
+          path: artifacts/python
+
+      - name: Download npm package
+        uses: actions/download-artifact@v4
+        with:
+          name: npm-package
+          path: artifacts/npm
+
+      - name: Download conda package
+        uses: actions/download-artifact@v4
+        with:
+          name: conda-package
+          path: artifacts/conda
+
+      - name: Download checksums
+        uses: actions/download-artifact@v4
+        with:
+          name: release-checksums
+          path: artifacts/checksums
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PRERELEASE: ${{ needs.build.outputs.prerelease }}
+        run: |
+          args=(--verify-tag --generate-notes --title "$GITHUB_REF_NAME")
+          if [[ "$PRERELEASE" == "true" ]]; then
+            args+=(--prerelease)
+          fi
+          mapfile -t assets < <(find artifacts -type f)
+          gh release create "$GITHUB_REF_NAME" "${assets[@]}" "${args[@]}"
