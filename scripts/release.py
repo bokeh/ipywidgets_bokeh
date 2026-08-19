@@ -69,7 +69,7 @@ def parse_version(value: str) -> Version:
 
 def _read_pattern(root: Path, relative_path: str, pattern: re.Pattern[str]) -> str:
     path = root / relative_path
-    matches = pattern.findall(path.read_text())
+    matches = pattern.findall(path.read_text(encoding="utf-8"))
     if len(matches) != 1:
         raise ReleaseError(f"expected exactly one version field in {relative_path}, found {len(matches)}")
     return matches[0]
@@ -81,8 +81,8 @@ def read_versions(root: Path = ROOT) -> dict[str, str]:
         for relative_path, pattern in VERSION_PATTERNS.items()
     }
 
-    package_json = json.loads((root / "ipywidgets_bokeh/package.json").read_text())
-    package_lock = json.loads((root / "ipywidgets_bokeh/package-lock.json").read_text())
+    package_json = json.loads((root / "ipywidgets_bokeh/package.json").read_text(encoding="utf-8"))
+    package_lock = json.loads((root / "ipywidgets_bokeh/package-lock.json").read_text(encoding="utf-8"))
     try:
         versions["ipywidgets_bokeh/package.json"] = package_json["version"]
         versions["ipywidgets_bokeh/package-lock.json"] = package_lock["version"]
@@ -118,7 +118,7 @@ def check_versions(root: Path = ROOT, tag: str | None = None) -> Version:
 
 def _replace_pattern(root: Path, relative_path: str, pattern: re.Pattern[str], version: str) -> str:
     path = root / relative_path
-    text = path.read_text()
+    text = path.read_text(encoding="utf-8")
     updated, count = pattern.subn(lambda match: match.group(0).replace(match.group(1), version), text)
     if count != 1:
         raise ReleaseError(f"expected exactly one version field in {relative_path}, found {count}")
@@ -132,12 +132,12 @@ def prepare_version(version_value: str, root: Path = ROOT) -> Version:
         updates[root / relative_path] = _replace_pattern(root, relative_path, pattern, version.python)
 
     package_path = root / "ipywidgets_bokeh/package.json"
-    package_json = json.loads(package_path.read_text())
+    package_json = json.loads(package_path.read_text(encoding="utf-8"))
     package_json["version"] = version.npm
     updates[package_path] = json.dumps(package_json, indent=2) + "\n"
 
     lock_path = root / "ipywidgets_bokeh/package-lock.json"
-    package_lock = json.loads(lock_path.read_text())
+    package_lock = json.loads(lock_path.read_text(encoding="utf-8"))
     try:
         package_lock["version"] = version.npm
         package_lock["packages"][""]["version"] = version.npm
@@ -146,7 +146,7 @@ def prepare_version(version_value: str, root: Path = ROOT) -> Version:
     updates[lock_path] = json.dumps(package_lock, indent=2) + "\n"
 
     for path, content in updates.items():
-        path.write_text(content)
+        path.write_text(content, encoding="utf-8")
 
     return check_versions(root)
 
@@ -248,7 +248,7 @@ def _verify_conda(path: Path, version: Version) -> None:
         index_path = destination / "info/index.json"
         if not index_path.exists():
             raise ReleaseError(f"{path.name} does not contain info/index.json")
-        index = json.loads(index_path.read_text())
+        index = json.loads(index_path.read_text(encoding="utf-8"))
         if index.get("name") != "ipywidgets_bokeh" or index.get("version") != version.python:
             raise ReleaseError(f"{path.name} has incorrect conda package metadata")
         bundle = list(destination.glob("**/site-packages/ipywidgets_bokeh/dist/ipywidgets_bokeh.js"))
@@ -275,7 +275,7 @@ def verify_artifacts(artifacts: Path, version: Version, checksums: Path | None =
         for path in sorted(distributions, key=lambda item: item.name):
             digest = hashlib.sha256(path.read_bytes()).hexdigest()
             lines.append(f"{digest}  {path.name}")
-        checksums.write_text("\n".join(lines) + "\n")
+        checksums.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
 def _parser() -> argparse.ArgumentParser:

@@ -42,6 +42,17 @@ def test_repository_versions_are_consistent():
     release.check_versions(ROOT)
 
 
+def test_read_versions_uses_utf8(monkeypatch):
+    original_read_text = Path.read_text
+
+    def read_text(path, *args, **kwargs):
+        assert kwargs.get("encoding") == "utf-8"
+        return original_read_text(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", read_text)
+    release.read_versions(ROOT)
+
+
 def test_prepare_version_updates_all_metadata(tmp_path):
     paths = [*release.VERSION_PATTERNS, "ipywidgets_bokeh/package.json", "ipywidgets_bokeh/package-lock.json"]
     for relative_path in paths:
