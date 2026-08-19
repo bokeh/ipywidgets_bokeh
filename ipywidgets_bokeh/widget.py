@@ -25,10 +25,6 @@ class IPyWidget(LayoutDOM):
 
     """
 
-    __javascript__ = [
-        "https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js",
-    ]
-
     bundle = Any()
     cdn = String(default="https://unpkg.com")
 
