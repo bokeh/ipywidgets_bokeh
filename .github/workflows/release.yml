@@ -9,6 +9,9 @@ on:
       reuse_run_id:
         description: "Run ID to reuse build artifacts from, skipping build/PyPI/conda (leave empty for a normal release)"
         required: false
+      tag:
+        description: "Release tag, e.g. 1.8.0 (only used when reuse_run_id is set; the dispatch ref is not the tag)"
+        required: false
       prerelease:
         description: "Mark as a prerelease (only used when reuse_run_id is set)"
         type: boolean
@@ -255,6 +258,8 @@ jobs:
     steps:
       - name: Checkout the tagged source
         uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.tag || github.ref_name }}
 
       - name: Download Python distributions
         uses: actions/download-artifact@v4
@@ -292,10 +297,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           PRERELEASE: ${{ needs.build.outputs.prerelease || inputs.prerelease }}
+          TAG: ${{ inputs.tag || github.ref_name }}
         run: |
-          args=(--verify-tag --generate-notes --title "$GITHUB_REF_NAME")
+          args=(--verify-tag --generate-notes --title "$TAG")
           if [[ "$PRERELEASE" == "true" ]]; then
             args+=(--prerelease)
           fi
           mapfile -t assets < <(find artifacts -type f)
-          gh release create "$GITHUB_REF_NAME" "${assets[@]}" "${args[@]}"
+          gh release create "$TAG" "${assets[@]}" "${args[@]}"
