@@ -1,0 +1,109 @@
+name: Finish release
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: "Release run ID to reuse build artifacts from (build/PyPI/conda already succeeded there)"
+        required: true
+      tag:
+        description: "Release tag (e.g. 1.8.0)"
+        required: true
+      prerelease:
+        description: "Mark the GitHub release as a prerelease"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  publish-npm:
+    name: Publish to npm
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: read
+      id-token: write
+      actions: read
+
+    steps:
+      - name: Set up Node.js for trusted publishing
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          package-manager-cache: false
+          registry-url: https://registry.npmjs.org
+
+      - name: Download npm package
+        uses: actions/download-artifact@v4
+        with:
+          name: npm-package
+          path: dist
+          run-id: ${{ inputs.run_id }}
+          github-token: ${{ github.token }}
+
+      - name: Publish npm package
+        env:
+          PRERELEASE: ${{ inputs.prerelease }}
+        run: |
+          args=(--access public)
+          if [[ "$PRERELEASE" == "true" ]]; then
+            args+=(--tag next)
+          fi
+          npm publish ./dist/*.tgz "${args[@]}"
+
+  github-release:
+    name: Create GitHub Release
+    needs: publish-npm
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: write
+      actions: read
+
+    steps:
+      - name: Download Python distributions
+        uses: actions/download-artifact@v4
+        with:
+          name: python-distributions
+          path: artifacts/python
+          run-id: ${{ inputs.run_id }}
+          github-token: ${{ github.token }}
+
+      - name: Download npm package
+        uses: actions/download-artifact@v4
+        with:
+          name: npm-package
+          path: artifacts/npm
+          run-id: ${{ inputs.run_id }}
+          github-token: ${{ github.token }}
+
+      - name: Download conda package
+        uses: actions/download-artifact@v4
+        with:
+          name: conda-package
+          path: artifacts/conda
+          run-id: ${{ inputs.run_id }}
+          github-token: ${{ github.token }}
+
+      - name: Download checksums
+        uses: actions/download-artifact@v4
+        with:
+          name: release-checksums
+          path: artifacts/checksums
+          run-id: ${{ inputs.run_id }}
+          github-token: ${{ github.token }}
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PRERELEASE: ${{ inputs.prerelease }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          args=(--verify-tag --generate-notes --title "$TAG")
+          if [[ "$PRERELEASE" == "true" ]]; then
+            args+=(--prerelease)
+          fi
+          mapfile -t assets < <(find artifacts -type f)
+          gh release create "$TAG" "${assets[@]}" "${args[@]}"
