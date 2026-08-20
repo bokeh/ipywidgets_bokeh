@@ -4,6 +4,15 @@ on:
   push:
     tags:
       - "[0-9]+.[0-9]+.[0-9]+*"
+  workflow_dispatch:
+    inputs:
+      reuse_run_id:
+        description: "Run ID to reuse build artifacts from, skipping build/PyPI/conda (leave empty for a normal release)"
+        required: false
+      prerelease:
+        description: "Mark as a prerelease (only used when reuse_run_id is set)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -15,6 +24,7 @@ concurrency:
 jobs:
   build:
     name: Build and verify release artifacts
+    if: inputs.reuse_run_id == ''
     runs-on: ubuntu-latest
     outputs:
       prerelease: ${{ steps.version.outputs.prerelease }}
@@ -117,6 +127,7 @@ jobs:
   publish-pypi:
     name: Publish to PyPI
     needs: build
+    if: inputs.reuse_run_id == '' && always() && !failure() && !cancelled()
     runs-on: ubuntu-latest
     environment: release
     permissions:
@@ -138,11 +149,13 @@ jobs:
   publish-npm:
     name: Publish to npm
     needs: build
+    if: always() && !failure() && !cancelled()
     runs-on: ubuntu-latest
     environment: release
     permissions:
       contents: read
       id-token: write
+      actions: read
 
     steps:
       - name: Set up Node.js for trusted publishing
@@ -157,10 +170,12 @@ jobs:
         with:
           name: npm-package
           path: dist
+          run-id: ${{ inputs.reuse_run_id || github.run_id }}
+          github-token: ${{ github.token }}
 
       - name: Publish npm package
         env:
-          PRERELEASE: ${{ needs.build.outputs.prerelease }}
+          PRERELEASE: ${{ needs.build.outputs.prerelease || inputs.prerelease }}
         run: |
           args=(--access public)
           if [[ "$PRERELEASE" == "true" ]]; then
@@ -171,8 +186,10 @@ jobs:
   publish-conda:
     name: Publish to Anaconda.org
     needs: build
+    if: inputs.reuse_run_id == '' && always() && !failure() && !cancelled()
     runs-on: ubuntu-latest
     environment: release
+
     permissions:
       contents: read
 
@@ -201,7 +218,7 @@ jobs:
       - name: Publish conda package
         env:
           ANACONDA_API_TOKEN: ${{ secrets.ANACONDA_API_TOKEN }}
-          PRERELEASE: ${{ needs.build.outputs.prerelease }}
+          PRERELEASE: ${{ needs.build.outputs.prerelease || inputs.prerelease }}
         run: |
           if [[ -z "$ANACONDA_API_TOKEN" ]]; then
             echo "ANACONDA_API_TOKEN is not configured in the release environment" >&2
@@ -224,10 +241,12 @@ jobs:
   github-release:
     name: Create GitHub Release
     needs: [build, publish-pypi, publish-npm, publish-conda]
+    if: always() && !failure() && !cancelled()
     runs-on: ubuntu-latest
     environment: release
     permissions:
       contents: write
+      actions: read
 
     steps:
       - name: Download Python distributions
@@ -235,29 +254,37 @@ jobs:
         with:
           name: python-distributions
           path: artifacts/python
+          run-id: ${{ inputs.reuse_run_id || github.run_id }}
+          github-token: ${{ github.token }}
 
       - name: Download npm package
         uses: actions/download-artifact@v4
         with:
           name: npm-package
           path: artifacts/npm
+          run-id: ${{ inputs.reuse_run_id || github.run_id }}
+          github-token: ${{ github.token }}
 
       - name: Download conda package
         uses: actions/download-artifact@v4
         with:
           name: conda-package
           path: artifacts/conda
+          run-id: ${{ inputs.reuse_run_id || github.run_id }}
+          github-token: ${{ github.token }}
 
       - name: Download checksums
         uses: actions/download-artifact@v4
         with:
           name: release-checksums
           path: artifacts/checksums
+          run-id: ${{ inputs.reuse_run_id || github.run_id }}
+          github-token: ${{ github.token }}
 
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
-          PRERELEASE: ${{ needs.build.outputs.prerelease }}
+          PRERELEASE: ${{ needs.build.outputs.prerelease || inputs.prerelease }}
         run: |
           args=(--verify-tag --generate-notes --title "$GITHUB_REF_NAME")
           if [[ "$PRERELEASE" == "true" ]]; then
