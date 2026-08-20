@@ -47,22 +47,39 @@ function get_package_json_url(packageName: string, moduleVersion: string, cdn: s
   return `${cdn}/${packageName}@${moduleVersion}/package.json`
 }
 
+// `_model_module_version`/`_view_module_version` are meant to be treated as
+// semver ranges, but some packages (e.g. nglview) declare an exact version
+// that doesn't quite match what's actually published (a missing patch
+// release, or a typo'd version bump), so the exact pin 404s on the CDN. Try
+// the exact version first - widening every request to a caret range by
+// default would silently resolve to the newest matching release even when
+// the exact pin exists (e.g. bqplot@0.5.20 exists, but bqplot@^0.5.20
+// resolves to 0.5.46), which risks loading JS that's out of sync with
+// whatever the kernel actually sent. Only widen as a fallback once the
+// exact version has failed.
+function widen_version(moduleVersion: string): string | null {
+  return /^[\^~*]|^[<>=]/.test(moduleVersion) ? null : `^${moduleVersion}`
+}
+
 // Peer widget packages (e.g. "jupyter-vue") aren't declared with a version by
 // the AMD `define()` call that depends on them, only by name. Look up the
 // version range the dependent package itself declares, so that we don't just
 // grab whatever happens to be "latest" on the CDN.
 async function resolve_peer_version(packageName: string, moduleVersion: string, dep: string, cdn: string): Promise<string> {
-  try {
-    const response = await fetch(get_package_json_url(packageName, moduleVersion, cdn))
-    if (response.ok) {
-      const pkg = await response.json()
-      const range = pkg.dependencies?.[dep] ?? pkg.peerDependencies?.[dep]
-      if (typeof range == "string") {
-        return range
+  const versions = [moduleVersion, widen_version(moduleVersion)].filter((v): v is string => v != null)
+  for (const version of versions) {
+    try {
+      const response = await fetch(get_package_json_url(packageName, version, cdn))
+      if (response.ok) {
+        const pkg = await response.json()
+        const range = pkg.dependencies?.[dep] ?? pkg.peerDependencies?.[dep]
+        if (typeof range == "string") {
+          return range
+        }
       }
+    } catch {
+      // try the next candidate version, or fall through to "latest" below
     }
-  } catch {
-    // fall through to "latest" below
   }
   return "latest"
 }
@@ -85,12 +102,39 @@ async function resolve_dependency(name: string, mod: AMDModule, exports: object,
   }
 }
 
-async function load_amd_module(moduleName: string, moduleVersion: string, url: string, cdn: string): Promise<any> {
-  const response = await fetch(url)
-  if (!response.ok) {
-    throw new Error(`Failed to fetch ${url} (status ${response.status})`)
+async function fetch_module_source(moduleName: string, moduleVersion: string, cdn: string): Promise<{url: string, source: string}> {
+  const versions = [moduleVersion, widen_version(moduleVersion)].filter((v): v is string => v != null)
+  for (const [i, version] of versions.entries()) {
+    const url = get_cdn_url(moduleName, version, cdn)
+    const is_last = i === versions.length - 1
+    try {
+      const response = await fetch(url)
+      if (response.ok) {
+        return {url, source: await response.text()}
+      }
+      if (is_last) {
+        throw new Error(`Failed to fetch ${url} (status ${response.status})`)
+      }
+    } catch (e) {
+      if (is_last) {
+        // A CDN 404 for a nonexistent version typically comes back without
+        // CORS headers, which makes the browser report a same-looking
+        // "blocked by CORS policy" error for what is really a missing
+        // package/version.
+        throw e instanceof Error && e.message.startsWith("Failed to fetch") ? e : new Error(
+          `Failed to fetch ${url}. This may be reported as a CORS error, but is ` +
+          `most likely because no version of ${moduleName} compatible with ` +
+          `${moduleVersion} is published on ${cdn}.`,
+        )
+      }
+    }
   }
-  const source = await response.text()
+  // unreachable: `versions` always has at least one entry
+  throw new Error(`Could not resolve ${moduleName}@${moduleVersion}`)
+}
+
+async function load_amd_module(moduleName: string, moduleVersion: string, cdn: string): Promise<any> {
+  const {url, source} = await fetch_module_source(moduleName, moduleVersion, cdn)
 
   const {package_name} = split_package(moduleName)
   const mod: AMDModule = {id: moduleName, uri: url}
@@ -128,9 +172,8 @@ function load_module(moduleName: string, moduleVersion: string, cdn: string): Pr
   // fatal for packages like Vue that assume a single global instance.
   let promise = mods.get(moduleName)
   if (promise == null) {
-    const url = get_cdn_url(moduleName, moduleVersion, cdn)
     console.debug(`Loading ${moduleName}@${moduleVersion} from ${cdn}`)
-    promise = load_amd_module(moduleName, moduleVersion, url, cdn)
+    promise = load_amd_module(moduleName, moduleVersion, cdn)
     mods.set(moduleName, promise)
   }
   return promise
