@@ -166,7 +166,7 @@ jobs:
           if [[ "$PRERELEASE" == "true" ]]; then
             args+=(--tag next)
           fi
-          npm publish dist/*.tgz "${args[@]}"
+          npm publish ./dist/*.tgz "${args[@]}"
 
   publish-conda:
     name: Publish to Anaconda.org
