@@ -13,6 +13,10 @@ on:
         description: "Mark as a prerelease (only used when reuse_run_id is set)"
         type: boolean
         default: false
+      skip_npm:
+        description: "Skip npm publish (use when it already succeeded on a prior attempt)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -149,7 +153,7 @@ jobs:
   publish-npm:
     name: Publish to npm
     needs: build
-    if: always() && !failure() && !cancelled()
+    if: inputs.skip_npm != true && always() && !failure() && !cancelled()
     runs-on: ubuntu-latest
     environment: release
     permissions:
