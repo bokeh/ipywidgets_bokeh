@@ -70,6 +70,7 @@ jobs:
 
       - name: Build and test conda package
         run: |
+          conda install --yes conda-package-handling
           conda build conda.recipe \
             --no-anaconda-upload \
             --output-folder release-artifacts/conda
